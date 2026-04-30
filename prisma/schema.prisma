@@ -1,0 +1,131 @@
+// New Chapter Real Estate CRM - Prisma Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  name          String
+  role          Role      @default(WRITER)
+  properties    Property[]
+  notes         Note[]
+  activities    Activity[]
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum Role {
+  ADMIN
+  WRITER
+  READER
+}
+
+model Property {
+  id                  String         @id @default(uuid())
+  addressRaw          String
+  addressNormalized   String
+  city                String?
+  state               String?
+  zip                 String?
+  status              PropertyStatus @default(NEW)
+  priority            Priority       @default(MEDIUM)
+  followUpDate        DateTime?
+  latitude            Float?
+  longitude           Float?
+  redfinUrl           String?
+  mapsUrl             String?
+  // Redfin fields
+  propertyType        String?
+  beds                Int?
+  baths               Float?
+  squareFeet          Int?
+  lotSize             Int?
+  yearBuilt           Int?
+  mlsNumber           String?
+  source              String?
+  price               Int?
+  createdById         String
+  createdBy          User           @relation(fields: [createdById], references: [id])
+  contacts            Contact[]
+  notes               Note[]
+  activities          Activity[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@index([addressNormalized])
+  @@index([status])
+  @@index([priority])
+}
+
+enum PropertyStatus {
+  NEW
+  CONTACTED
+  NEGOTIATING
+  CLOSED
+  DEAD
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model Contact {
+  id          String    @id @default(uuid())
+  propertyId  String
+  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  ownerName   String?
+  emails      String    @default("[]") // JSON array stored as string
+  phones      String    @default("[]") // JSON array stored as string
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Note {
+  id          String    @id @default(uuid())
+  propertyId  String
+  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  content     String    @db.Text
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Activity {
+  id          String         @id @default(uuid())
+  propertyId  String
+  property    Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  action      ActivityAction
+  details     String?
+  createdAt   DateTime      @default(now())
+}
+
+enum ActivityAction {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  NOTE_ADDED
+  CONTACT_ADDED
+  PHOTO_ADDED
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
