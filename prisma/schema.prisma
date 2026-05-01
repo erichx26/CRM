@@ -57,6 +57,7 @@ model Property {
   createdBy          User           @relation(fields: [createdById], references: [id])
   contacts            Contact[]
   notes               Note[]
+  photos              Photo[]
   activities          Activity[]
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
@@ -100,6 +101,16 @@ model Note {
   createdBy   User      @relation(fields: [createdById], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model Photo {
+  id          String    @id @default(uuid())
+  propertyId  String
+  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  url         String
+  filename    String
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
 }
 
 model Activity {

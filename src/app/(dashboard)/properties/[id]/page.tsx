@@ -18,6 +18,8 @@ import {
   User,
   Plus,
   X,
+  Image as ImageIcon,
+  Upload,
 } from "lucide-react";
 
 async function fetchProperty(id: string) {
@@ -72,6 +74,7 @@ export default function PropertyDetailPage() {
   const [newNote, setNewNote] = useState("");
   const [showContactForm, setShowContactForm] = useState(false);
   const [contactForm, setContactForm] = useState({ ownerName: "", emails: "", phones: "" });
+  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
 
   const updateMutation = useMutation({
     mutationFn: async (data: typeof form) => {
@@ -140,6 +143,24 @@ export default function PropertyDetailPage() {
       setContactForm({ ownerName: "", emails: "", phones: "" });
     },
   });
+
+  const photoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/properties/${id}/photos`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Failed to upload photo");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["property", id] });
+    },
+  });
+
+  const photos = (property as any)?.photos || [];
 
   useEffect(() => {
     if (property && !editing) {
@@ -517,6 +538,79 @@ export default function PropertyDetailPage() {
             )}
           </div>
 
+          {/* Photos */}
+          <div className="glass-card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold">Photos</h2>
+              <label className="flex items-center gap-1 px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded-md hover:bg-[#3b82f6]/20 cursor-pointer">
+                <Plus className="w-3 h-3" />
+                <span>Add Photo</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) photoMutation.mutate(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+            {photos.length === 0 ? (
+              <label className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-[#1e2738] rounded-lg cursor-pointer hover:border-[#3b82f6]/50 transition-colors">
+                <Upload className="w-8 h-8 text-[#94a3b8] mb-2" />
+                <span className="text-sm text-[#94a3b8]">Click to upload a photo</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) photoMutation.mutate(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {photos.map((photo: { id: string; url: string; filename: string }) => (
+                  <button
+                    key={photo.id}
+                    onClick={() => setLightboxPhoto(photo.url)}
+                    className="relative aspect-square rounded-lg overflow-hidden border border-[#1e2738] hover:border-[#3b82f6] transition-colors group"
+                  >
+                    <img
+                      src={photo.url}
+                      alt={photo.filename}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <ImageIcon className="w-6 h-6 text-white" />
+                    </div>
+                  </button>
+                ))}
+                <label className="flex flex-col items-center justify-center aspect-square border-2 border-dashed border-[#1e2738] rounded-lg cursor-pointer hover:border-[#3b82f6]/50 transition-colors">
+                  <Plus className="w-6 h-6 text-[#94a3b8]" />
+                  <span className="text-xs text-[#94a3b8] mt-1">Add</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) photoMutation.mutate(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+            )}
+            {photoMutation.isPending && (
+              <p className="text-sm text-[#94a3b8] mt-2">Uploading...</p>
+            )}
+          </div>
+
           {/* Notes */}
           <div className="glass-card p-6">
             <h2 className="font-semibold mb-4">Notes</h2>
@@ -569,6 +663,27 @@ export default function PropertyDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Lightbox */}
+      {lightboxPhoto && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightboxPhoto(null)}
+        >
+          <button
+            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white transition-colors"
+            onClick={() => setLightboxPhoto(null)}
+          >
+            <X className="w-8 h-8" />
+          </button>
+          <img
+            src={lightboxPhoto}
+            alt="Full size"
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

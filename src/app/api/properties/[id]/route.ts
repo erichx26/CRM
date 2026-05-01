@@ -29,6 +29,7 @@ export async function GET(
     include: {
       contacts: true,
       notes: { include: { createdBy: true }, orderBy: { createdAt: "desc" } },
+      photos: { orderBy: { createdAt: "desc" } },
       activities: { include: { user: true }, orderBy: { createdAt: "desc" } },
       createdBy: { select: { id: true, name: true } },
     },
