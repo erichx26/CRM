@@ -20,6 +20,8 @@ import {
   X,
   Image as ImageIcon,
   Upload,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 async function fetchProperty(id: string) {
@@ -75,6 +77,9 @@ export default function PropertyDetailPage() {
   const [showContactForm, setShowContactForm] = useState(false);
   const [contactForm, setContactForm] = useState({ ownerName: "", emails: "", phones: "" });
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number>(0);
+  const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
+  const [selectMode, setSelectMode] = useState(false);
 
   const updateMutation = useMutation({
     mutationFn: async (data: typeof form) => {
@@ -145,20 +150,55 @@ export default function PropertyDetailPage() {
   });
 
   const photoMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async (files: File[]) => {
       const formData = new FormData();
-      formData.append("file", file);
+      for (const file of files) {
+        formData.append("files", file);
+      }
       const res = await fetch(`/api/properties/${id}/photos`, {
         method: "POST",
         body: formData,
       });
-      if (!res.ok) throw new Error("Failed to upload photo");
+      if (!res.ok) throw new Error("Failed to upload photos");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
     },
   });
+
+  const deletePhotoMutation = useMutation({
+    mutationFn: async (photoId: string) => {
+      const res = await fetch(`/api/properties/${id}/photos?photoId=${photoId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Failed to delete photo");
+      }
+      return res.json().catch(() => ({}));
+    },
+  });
+
+  const deleteAllPhotosMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/properties/${id}/photos?deleteAll=true`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete all photos");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["property", id] });
+      setSelectedPhotos(new Set());
+      setSelectMode(false);
+    },
+  });
+
+  const handleDeleteSelected = async () => {
+    for (const pid of selectedPhotos) {
+      await deletePhotoMutation.mutateAsync(pid);
+    }
+    queryClient.invalidateQueries({ queryKey: ["property", id] });
+    setSelectedPhotos(new Set());
+    setSelectMode(false);
+  };
 
   const photos = (property as any)?.photos || [];
 
@@ -538,79 +578,6 @@ export default function PropertyDetailPage() {
             )}
           </div>
 
-          {/* Photos */}
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold">Photos</h2>
-              <label className="flex items-center gap-1 px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded-md hover:bg-[#3b82f6]/20 cursor-pointer">
-                <Plus className="w-3 h-3" />
-                <span>Add Photo</span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) photoMutation.mutate(file);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-            </div>
-            {photos.length === 0 ? (
-              <label className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-[#1e2738] rounded-lg cursor-pointer hover:border-[#3b82f6]/50 transition-colors">
-                <Upload className="w-8 h-8 text-[#94a3b8] mb-2" />
-                <span className="text-sm text-[#94a3b8]">Click to upload a photo</span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) photoMutation.mutate(file);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {photos.map((photo: { id: string; url: string; filename: string }) => (
-                  <button
-                    key={photo.id}
-                    onClick={() => setLightboxPhoto(photo.url)}
-                    className="relative aspect-square rounded-lg overflow-hidden border border-[#1e2738] hover:border-[#3b82f6] transition-colors group"
-                  >
-                    <img
-                      src={photo.url}
-                      alt={photo.filename}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <ImageIcon className="w-6 h-6 text-white" />
-                    </div>
-                  </button>
-                ))}
-                <label className="flex flex-col items-center justify-center aspect-square border-2 border-dashed border-[#1e2738] rounded-lg cursor-pointer hover:border-[#3b82f6]/50 transition-colors">
-                  <Plus className="w-6 h-6 text-[#94a3b8]" />
-                  <span className="text-xs text-[#94a3b8] mt-1">Add</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) photoMutation.mutate(file);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-              </div>
-            )}
-            {photoMutation.isPending && (
-              <p className="text-sm text-[#94a3b8] mt-2">Uploading...</p>
-            )}
-          </div>
-
           {/* Notes */}
           <div className="glass-card p-6">
             <h2 className="font-semibold mb-4">Notes</h2>
@@ -632,16 +599,161 @@ export default function PropertyDetailPage() {
                 </button>
               </div>
             </div>
-            <div className="space-y-3">
-              {notes.map((note: { id: string; content: string; createdBy: { name: string }; createdAt: string }) => (
-                <div key={note.id} className="p-4 bg-[#161d2e] rounded-lg">
-                  <p className="text-sm whitespace-pre-wrap">{note.content}</p>
-                  <p className="text-xs text-[#94a3b8] mt-2">
-                    {note.createdBy?.name} • {new Date(note.createdAt).toLocaleString()}
-                  </p>
-                </div>
-              ))}
+            <div className="max-h-48 overflow-y-auto p-3 bg-[#161d2e] rounded-lg">
+              <p className="text-sm whitespace-pre-wrap text-[#94a3b8]">
+                {notes.map((n: { content: string; createdBy: { name: string }; createdAt: string }) =>
+                  `[${n.createdBy?.name?.split(' ').map((w: string) => w[0]).join('').toUpperCase()} ${new Date(n.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })} ${new Date(n.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}]: ${n.content}`
+                ).join('\n\n')}
+              </p>
             </div>
+          </div>
+
+          {/* Photos */}
+          <div className="glass-card p-6 overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold">Photos {photos.length > 0 && `(${photos.length})`}</h2>
+              <div className="flex gap-2">
+                {selectMode ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        const newSet = new Set<string>();
+                        photos.forEach((p: { id: string }) => newSet.add(p.id));
+                        setSelectedPhotos(newSet);
+                      }}
+                      className="px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded-md hover:bg-[#3b82f6]/20"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={handleDeleteSelected}
+                      disabled={selectedPhotos.size === 0 || deletePhotoMutation.isPending}
+                      className="px-2 py-1 text-xs bg-[#ef4444]/10 text-[#ef4444] rounded-md hover:bg-[#ef4444]/20 disabled:opacity-50"
+                    >
+                      Delete Selected ({selectedPhotos.size})
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm("Delete all photos?")) deleteAllPhotosMutation.mutate();
+                      }}
+                      disabled={deleteAllPhotosMutation.isPending}
+                      className="px-2 py-1 text-xs bg-[#ef4444]/10 text-[#ef4444] rounded-md hover:bg-[#ef4444]/20 disabled:opacity-50"
+                    >
+                      Delete All
+                    </button>
+                    <button
+                      onClick={() => { setSelectMode(false); setSelectedPhotos(new Set()); }}
+                      className="px-2 py-1 text-xs bg-[#94a3b8]/10 text-[#94a3b8] rounded-md hover:bg-[#94a3b8]/20"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {photos.length > 0 && (
+                      <button
+                        onClick={() => setSelectMode(true)}
+                        className="px-2 py-1 text-xs bg-[#ef4444]/10 text-[#ef4444] rounded-md hover:bg-[#ef4444]/20"
+                      >
+                        Delete Photos
+                      </button>
+                    )}
+                    <label className="flex items-center gap-1 px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded-md hover:bg-[#3b82f6]/20 cursor-pointer">
+                      <Plus className="w-3 h-3" />
+                      <span>Add Photos</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (files.length) photoMutation.mutate(files);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+            </div>
+            {photos.length === 0 ? (
+              <label className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-[#1e2738] rounded-lg cursor-pointer hover:border-[#3b82f6]/50 transition-colors">
+                <Upload className="w-8 h-8 text-[#94a3b8] mb-2" />
+                <span className="text-sm text-[#94a3b8]">Click to upload photos</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length) photoMutation.mutate(files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            ) : (
+              <div className="flex gap-2 overflow-x-auto pb-2" style={{ maxWidth: 'calc(5 * 180px + 4 * 8px)' }}>
+                {photos.map((photo: { id: string; url: string; filename: string }, index: number) => (
+                  <div
+                    key={photo.id}
+                    className={`relative flex-shrink-0 w-[168px] h-[168px] rounded-lg overflow-hidden border transition-colors ${selectMode ? 'cursor-pointer' : 'hover:border-[#3b82f6]'} ${selectedPhotos.has(photo.id) ? 'border-[#ef4444] ring-2 ring-[#ef4444]' : 'border-[#1e2738]'}`}
+                  >
+                    {selectMode && (
+                      <div className={`absolute top-2 left-2 z-10 w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedPhotos.has(photo.id) ? 'bg-[#ef4444] border-[#ef4444]' : 'bg-transparent border-white'}`}>
+                        {selectedPhotos.has(photo.id) && <span className="text-white text-xs">✓</span>}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (selectMode) {
+                          const newSet = new Set(selectedPhotos);
+                          if (newSet.has(photo.id)) newSet.delete(photo.id);
+                          else newSet.add(photo.id);
+                          setSelectedPhotos(newSet);
+                        } else {
+                          setLightboxPhoto(photo.url);
+                          setLightboxIndex(index);
+                        }
+                      }}
+                      className="w-full h-full"
+                    >
+                      <img
+                        src={photo.url}
+                        alt={photo.filename}
+                        className="w-full h-full object-cover"
+                      />
+                      {!selectMode && (
+                        <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <ImageIcon className="w-6 h-6 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                ))}
+                {!selectMode && (
+                  <label className="flex-shrink-0 flex flex-col items-center justify-center w-[168px] h-[168px] border-2 border-dashed border-[#1e2738] rounded-lg cursor-pointer hover:border-[#3b82f6]/50 transition-colors">
+                    <Plus className="w-6 h-6 text-[#94a3b8]" />
+                    <span className="text-xs text-[#94a3b8] mt-1">Add</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (files.length) photoMutation.mutate(files);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+            )}
+            {(photoMutation.isPending || deletePhotoMutation.isPending || deleteAllPhotosMutation.isPending) && (
+              <p className="text-sm text-[#94a3b8] mt-2">Processing...</p>
+            )}
           </div>
         </div>
 
@@ -676,12 +788,27 @@ export default function PropertyDetailPage() {
           >
             <X className="w-8 h-8" />
           </button>
+          <button
+            className="absolute left-4 p-2 text-white/70 hover:text-white transition-colors"
+            onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex - 1 + photos.length) % photos.length); setLightboxPhoto(photos[lightboxIndex].url); }}
+          >
+            <ChevronLeft className="w-8 h-8" />
+          </button>
+          <button
+            className="absolute right-4 p-2 text-white/70 hover:text-white transition-colors"
+            onClick={(e) => { e.stopPropagation(); setLightboxIndex((lightboxIndex + 1) % photos.length); setLightboxPhoto(photos[lightboxIndex].url); }}
+          >
+            <ChevronRight className="w-8 h-8" />
+          </button>
           <img
             src={lightboxPhoto}
             alt="Full size"
             className="max-w-full max-h-full object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
           />
+          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/50 text-sm">
+            {lightboxIndex + 1} / {photos.length}
+          </p>
         </div>
       )}
     </div>

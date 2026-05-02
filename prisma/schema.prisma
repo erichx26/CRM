@@ -131,6 +131,7 @@ enum ActivityAction {
   NOTE_ADDED
   CONTACT_ADDED
   PHOTO_ADDED
+  PHOTO_DELETED
 }
 
 model Session {
