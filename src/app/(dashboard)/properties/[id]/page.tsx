@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   MapPin,
@@ -72,14 +72,27 @@ export default function PropertyDetailPage() {
     status: "",
     priority: "",
     followUpDate: "",
+    propertyType: "",
+    beds: "",
+    baths: "",
+    squareFeet: "",
+    lotSize: "",
+    yearBuilt: "",
+    mlsNumber: "",
+    source: "",
+    price: "",
   });
   const [newNote, setNewNote] = useState("");
   const [showContactForm, setShowContactForm] = useState(false);
+  const [editingContact, setEditingContact] = useState<string | null>(null);
   const [contactForm, setContactForm] = useState({ ownerName: "", emails: "", phones: "" });
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [editNoteContent, setEditNoteContent] = useState("");
   const [lightboxIndex, setLightboxIndex] = useState<number>(0);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
+  const photosSectionRef = useRef<HTMLDivElement>(null);
 
   const updateMutation = useMutation({
     mutationFn: async (data: typeof form) => {
@@ -200,7 +213,81 @@ export default function PropertyDetailPage() {
     setSelectMode(false);
   };
 
+  const setThumbnailMutation = useMutation({
+    mutationFn: async (photoId: string) => {
+      await fetch(`/api/properties/${id}/photos/set-thumbnail`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoId }),
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["property", id] }),
+  });
+
+  const updateContactMutation = useMutation({
+    mutationFn: async ({ contactId, ownerName, emails, phones }: { contactId: string; ownerName: string; emails: string; phones: string }) => {
+      const res = await fetch(`/api/properties/${id}/contacts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ownerName,
+          emails: JSON.stringify(emails.split(",").map((e: string) => e.trim()).filter(Boolean)),
+          phones: JSON.stringify(phones.split(",").map((p: string) => p.trim()).filter(Boolean)),
+          updateId: contactId,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update contact");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["property", id] });
+      setEditingContact(null);
+      setContactForm({ ownerName: "", emails: "", phones: "" });
+      setShowContactForm(false);
+    },
+  });
+
+  const updateNoteMutation = useMutation({
+    mutationFn: async ({ noteId, content }: { noteId: string; content: string }) => {
+      const res = await fetch(`/api/properties/${id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, updateId: noteId }),
+      });
+      if (!res.ok) throw new Error("Failed to update note");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["property", id] });
+      setEditingNote(null);
+      setEditNoteContent("");
+    },
+  });
+
+  const deleteContactMutation = useMutation({
+    mutationFn: async (contactId: string) => {
+      const res = await fetch(`/api/properties/${id}/contacts?contactId=${contactId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete contact");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["property", id] }),
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: async (noteId: string) => {
+      const res = await fetch(`/api/properties/${id}/notes?noteId=${noteId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete note");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["property", id] });
+      setEditingNote(null);
+      setEditNoteContent("");
+    },
+  });
+
   const photos = (property as any)?.photos || [];
+  const thumbnailPhoto = photos.find((p: { isThumbnail?: boolean }) => p.isThumbnail) || photos[0];
 
   useEffect(() => {
     if (property && !editing) {
@@ -214,6 +301,15 @@ export default function PropertyDetailPage() {
         followUpDate: property.followUpDate
           ? new Date(property.followUpDate).toISOString().split("T")[0]
           : "",
+        propertyType: property.propertyType || "",
+        beds: property.beds != null ? String(property.beds) : "",
+        baths: property.baths != null ? String(property.baths) : "",
+        squareFeet: property.squareFeet != null ? String(property.squareFeet) : "",
+        lotSize: property.lotSize != null ? String(property.lotSize) : "",
+        yearBuilt: property.yearBuilt != null ? String(property.yearBuilt) : "",
+        mlsNumber: property.mlsNumber || "",
+        source: property.source || "",
+        price: property.price != null ? String(property.price) : "",
       });
     }
   }, [property, editing]);
@@ -352,6 +448,83 @@ export default function PropertyDetailPage() {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">Type</label>
+                    <input
+                      type="text"
+                      value={form.propertyType}
+                      onChange={(e) => setForm({ ...form, propertyType: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">Beds</label>
+                    <input
+                      type="number"
+                      value={form.beds}
+                      onChange={(e) => setForm({ ...form, beds: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">Baths</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={form.baths}
+                      onChange={(e) => setForm({ ...form, baths: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">Sq Ft</label>
+                    <input
+                      type="number"
+                      value={form.squareFeet}
+                      onChange={(e) => setForm({ ...form, squareFeet: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">Lot Size</label>
+                    <input
+                      type="number"
+                      value={form.lotSize}
+                      onChange={(e) => setForm({ ...form, lotSize: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">Year Built</label>
+                    <input
+                      type="number"
+                      value={form.yearBuilt}
+                      onChange={(e) => setForm({ ...form, yearBuilt: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">MLS#</label>
+                    <input
+                      type="text"
+                      value={form.mlsNumber}
+                      onChange={(e) => setForm({ ...form, mlsNumber: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">Price</label>
+                    <input
+                      type="number"
+                      value={form.price}
+                      onChange={(e) => setForm({ ...form, price: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white"
+                    />
+                  </div>
+                </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
@@ -373,11 +546,35 @@ export default function PropertyDetailPage() {
             ) : (
               <>
                 <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h1 className="text-xl font-semibold">{property.addressRaw}</h1>
-                    <p className="text-[#94a3b8]">
-                      {[property.city, property.state, property.zip].filter(Boolean).join(", ")}
-                    </p>
+                  <div className="flex gap-4">
+                    {(thumbnailPhoto || photos.length > 0) && (
+                      <div className="relative w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden border border-[#1e2738]">
+                        <img
+                          src={thumbnailPhoto?.url || photos[0]?.url}
+                          alt="Thumbnail"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          onClick={() => {
+                            if (thumbnailPhoto?.isThumbnail) {
+                              setSelectMode(true);
+                              setTimeout(() => photosSectionRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                            } else if (photos.length > 0) {
+                              setThumbnailMutation.mutate(photos[0].id);
+                            }
+                          }}
+                          className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-[#3b82f6]/80 text-white text-[10px] rounded hover:bg-[#3b82f6]"
+                        >
+                          {thumbnailPhoto?.isThumbnail ? "Edit" : "Set"}
+                        </button>
+                      </div>
+                    )}
+                    <div>
+                      <h1 className="text-xl font-semibold">{property.addressRaw}</h1>
+                      <p className="text-[#94a3b8]">
+                        {[property.city, property.state, property.zip].filter(Boolean).join(", ")}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <span className={`px-2 py-1 rounded-md text-xs font-medium ${statusColors[property.status]}`}>
@@ -415,12 +612,15 @@ export default function PropertyDetailPage() {
                   )}
                 </div>
 
-                {property.followUpDate && (
-                  <div className="flex items-center gap-2 text-sm text-[#f59e0b]">
-                    <Calendar className="w-4 h-4" />
-                    Follow-up: {new Date(property.followUpDate).toLocaleDateString()}
-                  </div>
-                )}
+                <div className="flex items-center gap-4 text-sm text-[#94a3b8]">
+                  <span>Added: {new Date(property.createdAt).toLocaleDateString()}</span>
+                  {property.followUpDate && (
+                    <span className="text-[#f59e0b] flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      Follow-up: {new Date(property.followUpDate).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
 
                 {/* Property Details */}
                 {(property.propertyType || property.beds || property.baths || property.squareFeet || property.lotSize || property.yearBuilt) && (
@@ -496,20 +696,26 @@ export default function PropertyDetailPage() {
           <div className="glass-card p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold">Owner / Contact Info</h2>
-              <button
-                onClick={() => setShowContactForm(true)}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded-md hover:bg-[#3b82f6]/20"
-              >
-                <Plus className="w-3 h-3" />
-                Add
-              </button>
+              {!showContactForm && (
+                <button
+                  onClick={() => {
+                    setContactForm({ ownerName: "", emails: "", phones: "" });
+                    setEditingContact("");
+                    setShowContactForm(true);
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded-md hover:bg-[#3b82f6]/20"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add
+                </button>
+              )}
             </div>
 
             {showContactForm && (
               <div className="mb-4 p-4 bg-[#161d2e] rounded-lg border border-[#1e2738]">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-medium">New Contact</p>
-                  <button onClick={() => setShowContactForm(false)} className="text-[#94a3b8] hover:text-white">
+                  <p className="text-sm font-medium">{editingContact ? "Edit Contact" : "New Contact"}</p>
+                  <button onClick={() => { setShowContactForm(false); setEditingContact(""); }} className="text-[#94a3b8] hover:text-white">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -536,11 +742,17 @@ export default function PropertyDetailPage() {
                     className="w-full px-3 py-2 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-sm"
                   />
                   <button
-                    onClick={() => addContactMutation.mutate(contactForm)}
-                    disabled={addContactMutation.isPending}
+                    onClick={() => {
+                      if (editingContact) {
+                        updateContactMutation.mutate({ contactId: editingContact, ...contactForm });
+                      } else {
+                        addContactMutation.mutate(contactForm);
+                      }
+                    }}
+                    disabled={addContactMutation.isPending || updateContactMutation.isPending}
                     className="w-full px-3 py-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-sm font-medium rounded-lg disabled:opacity-50"
                   >
-                    {addContactMutation.isPending ? "Saving..." : "Save Contact"}
+                    {addContactMutation.isPending || updateContactMutation.isPending ? "Saving..." : "Save Contact"}
                   </button>
                 </div>
               </div>
@@ -552,25 +764,53 @@ export default function PropertyDetailPage() {
               <div className="space-y-4">
                 {contacts.map((contact: { id: string; ownerName?: string; emails: string; phones: string }) => (
                   <div key={contact.id} className="p-4 bg-[#161d2e] rounded-lg">
-                    {contact.ownerName && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <User className="w-4 h-4 text-[#94a3b8]" />
-                        <span className="font-medium">{contact.ownerName}</span>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        {contact.ownerName && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <User className="w-4 h-4 text-[#94a3b8]" />
+                            <span className="font-medium">{contact.ownerName}</span>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-2 gap-4">
+                          {parseJsonField<string[]>(contact.emails, []).length > 0 && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Mail className="w-4 h-4 text-[#94a3b8]" />
+                              <span className="text-[#94a3b8]">{parseJsonField<string[]>(contact.emails, []).join(", ")}</span>
+                            </div>
+                          )}
+                          {parseJsonField<string[]>(contact.phones, []).length > 0 && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Phone className="w-4 h-4 text-[#94a3b8]" />
+                              <span className="text-[#94a3b8]">{parseJsonField<string[]>(contact.phones, []).join(", ")}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-4">
-                      {parseJsonField<string[]>(contact.emails, []).length > 0 && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="w-4 h-4 text-[#94a3b8]" />
-                          <span className="text-[#94a3b8]">{parseJsonField<string[]>(contact.emails, []).join(", ")}</span>
-                        </div>
-                      )}
-                      {parseJsonField<string[]>(contact.phones, []).length > 0 && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="w-4 h-4 text-[#94a3b8]" />
-                          <span className="text-[#94a3b8]">{parseJsonField<string[]>(contact.phones, []).join(", ")}</span>
-                        </div>
-                      )}
+                      <div className="flex gap-1 ml-2">
+                        <button
+                          onClick={() => {
+                            if (confirm("Delete this contact?")) deleteContactMutation.mutate(contact.id);
+                          }}
+                          className="px-2 py-1 text-xs bg-[#ef4444]/10 text-[#ef4444] rounded hover:bg-[#ef4444]/20"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingContact(contact.id);
+                            setContactForm({
+                              ownerName: contact.ownerName || "",
+                              emails: parseJsonField<string[]>(contact.emails, []).join(", "),
+                              phones: parseJsonField<string[]>(contact.phones, []).join(", "),
+                            });
+                            setShowContactForm(true);
+                          }}
+                          className="px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded hover:bg-[#3b82f6]/20"
+                        >
+                          Edit
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -583,33 +823,77 @@ export default function PropertyDetailPage() {
             <h2 className="font-semibold mb-4">Notes</h2>
             <div className="mb-4">
               <div className="flex gap-2">
-                <textarea
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="Add a note..."
-                  className="flex-1 px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white placeholder-[#94a3b8] resize-none"
-                  rows={3}
-                />
-                <button
-                  onClick={() => newNote.trim() && noteMutation.mutate(newNote)}
-                  disabled={!newNote.trim() || noteMutation.isPending}
-                  className="px-4 py-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-lg disabled:opacity-50"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                </button>
+                {editingNote ? (
+                  <>
+                    <textarea
+                      value={editNoteContent}
+                      onChange={(e) => setEditNoteContent(e.target.value)}
+                      className="flex-1 px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white placeholder-[#94a3b8] resize-none"
+                      rows={3}
+                    />
+                    <button
+                      onClick={() => updateNoteMutation.mutate({ noteId: editingNote, content: editNoteContent })}
+                      disabled={updateNoteMutation.isPending}
+                      className="px-4 py-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-lg disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => { setEditingNote(null); setEditNoteContent(""); }}
+                      className="px-4 py-2 border border-[#1e2738] text-[#94a3b8] hover:text-white rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <textarea
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      placeholder="Add a note..."
+                      className="flex-1 px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white placeholder-[#94a3b8] resize-none"
+                      rows={3}
+                    />
+                    <button
+                      onClick={() => newNote.trim() && noteMutation.mutate(newNote)}
+                      disabled={!newNote.trim() || noteMutation.isPending}
+                      className="px-4 py-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-lg disabled:opacity-50"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
-            <div className="max-h-48 overflow-y-auto p-3 bg-[#161d2e] rounded-lg">
-              <p className="text-sm whitespace-pre-wrap text-[#94a3b8]">
-                {notes.map((n: { content: string; createdBy: { name: string }; createdAt: string }) =>
-                  `[${n.createdBy?.name?.split(' ').map((w: string) => w[0]).join('').toUpperCase()} ${new Date(n.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })} ${new Date(n.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}]: ${n.content}`
-                ).join('\n\n')}
-              </p>
+            <div className="max-h-48 overflow-y-auto space-y-2">
+              {[...notes].reverse().map((n: { id: string; content: string; createdBy: { name: string }; createdAt: string }) => (
+                <div key={n.id} className="p-3 bg-[#161d2e] rounded-lg group">
+                  <div className="flex items-start justify-between">
+                    <p className="text-sm whitespace-pre-wrap text-[#94a3b8] flex-1">
+                      [{n.createdBy?.name?.split(' ').map((w: string) => w[0]).join('').toUpperCase()} {new Date(n.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })} {new Date(n.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}]: {n.content}
+                    </p>
+                    <div className="flex gap-1 ml-2">
+                      <button
+                        onClick={() => { if (confirm("Delete this note?")) deleteNoteMutation.mutate(n.id); }}
+                        className="px-2 py-1 text-xs bg-[#ef4444]/10 text-[#ef4444] rounded opacity-0 group-hover:opacity-100 hover:bg-[#ef4444]/20"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => { setEditingNote(n.id); setEditNoteContent(n.content); }}
+                        className="px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded opacity-0 group-hover:opacity-100 hover:bg-[#3b82f6]/20"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Photos */}
-          <div className="glass-card p-6 overflow-hidden">
+          <div ref={photosSectionRef} className="glass-card p-6 overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold">Photos {photos.length > 0 && `(${photos.length})`}</h2>
               <div className="flex gap-2">
@@ -624,6 +908,19 @@ export default function PropertyDetailPage() {
                       className="px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded-md hover:bg-[#3b82f6]/20"
                     >
                       Select All
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (selectedPhotos.size === 1) {
+                          setThumbnailMutation.mutate(Array.from(selectedPhotos)[0]);
+                          setSelectMode(false);
+                          setSelectedPhotos(new Set());
+                        }
+                      }}
+                      disabled={selectedPhotos.size !== 1}
+                      className="px-2 py-1 text-xs bg-[#22c55e]/10 text-[#22c55e] rounded-md hover:bg-[#22c55e]/20 disabled:opacity-50"
+                    >
+                      Set Thumbnail
                     </button>
                     <button
                       onClick={handleDeleteSelected}
@@ -652,10 +949,13 @@ export default function PropertyDetailPage() {
                   <>
                     {photos.length > 0 && (
                       <button
-                        onClick={() => setSelectMode(true)}
-                        className="px-2 py-1 text-xs bg-[#ef4444]/10 text-[#ef4444] rounded-md hover:bg-[#ef4444]/20"
+                        onClick={() => {
+                          setSelectMode(true);
+                          setTimeout(() => photosSectionRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                        }}
+                        className="px-2 py-1 text-xs bg-[#3b82f6]/10 text-white rounded-md hover:bg-[#3b82f6]/20"
                       >
-                        Delete Photos
+                        Edit
                       </button>
                     )}
                     <label className="flex items-center gap-1 px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded-md hover:bg-[#3b82f6]/20 cursor-pointer">

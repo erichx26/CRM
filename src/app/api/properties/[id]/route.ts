@@ -12,6 +12,15 @@ const updatePropertySchema = z.object({
   status: z.enum(["NEW", "CONTACTED", "NEGOTIATING", "CLOSED", "DEAD"]).optional(),
   priority: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
   followUpDate: z.string().optional().nullable(),
+  propertyType: z.string().optional(),
+  beds: z.string().optional(),
+  baths: z.string().optional(),
+  squareFeet: z.string().optional(),
+  lotSize: z.string().optional(),
+  yearBuilt: z.string().optional(),
+  mlsNumber: z.string().optional(),
+  source: z.string().optional(),
+  price: z.string().optional(),
 });
 
 export async function GET(
@@ -75,7 +84,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Property not found" }, { status: 404 });
   }
 
-  const { addressRaw, city, state, zip, status, priority, followUpDate } = parsed.data;
+  const { addressRaw, city, state, zip, status, priority, followUpDate, propertyType, beds, baths, squareFeet, lotSize, yearBuilt, mlsNumber, source, price } = parsed.data;
 
   let addressNormalized = existing.addressNormalized;
   if (addressRaw) {
@@ -103,6 +112,15 @@ export async function PATCH(
       ...(followUpDate !== undefined && {
         followUpDate: followUpDate ? new Date(followUpDate) : null,
       }),
+      ...(propertyType !== undefined && { propertyType }),
+      ...(beds !== undefined && { beds: beds ? parseInt(beds) : null }),
+      ...(baths !== undefined && { baths: baths ? parseFloat(baths) : null }),
+      ...(squareFeet !== undefined && { squareFeet: squareFeet ? parseInt(squareFeet) : null }),
+      ...(lotSize !== undefined && { lotSize: lotSize ? parseInt(lotSize) : null }),
+      ...(yearBuilt !== undefined && { yearBuilt: yearBuilt ? parseInt(yearBuilt) : null }),
+      ...(mlsNumber !== undefined && { mlsNumber }),
+      ...(source !== undefined && { source }),
+      ...(price !== undefined && { price: price ? parseInt(price) : null }),
       redfinUrl: addressRaw
         ? generateRedfinUrl(addressRaw, city ?? existing.city ?? undefined, state ?? existing.state ?? undefined, zip ?? existing.zip ?? undefined)
         : undefined,

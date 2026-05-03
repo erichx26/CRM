@@ -7,6 +7,7 @@ const contactSchema = z.object({
   ownerName: z.string().optional(),
   emails: z.string().optional(),
   phones: z.string().optional(),
+  updateId: z.string().optional(),
 });
 
 export async function POST(
@@ -28,6 +29,22 @@ export async function POST(
   const property = await prisma.property.findUnique({ where: { id } });
   if (!property) {
     return NextResponse.json({ error: "Property not found" }, { status: 404 });
+  }
+
+  if (parsed.data.updateId) {
+    const existingContact = await prisma.contact.findFirst({ where: { id: parsed.data.updateId, propertyId: id } });
+    if (!existingContact) {
+      return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+    }
+    const contact = await prisma.contact.update({
+      where: { id: parsed.data.updateId },
+      data: {
+        ownerName: parsed.data.ownerName || null,
+        emails: parsed.data.emails || "[]",
+        phones: parsed.data.phones || "[]",
+      },
+    });
+    return NextResponse.json(contact, { status: 200 });
   }
 
   const contact = await prisma.contact.create({
@@ -94,7 +111,19 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  await prisma.contact.delete({ where: { id } });
+  const { searchParams } = new URL(req.url);
+  const contactId = searchParams.get("contactId");
+
+  if (!contactId) {
+    return NextResponse.json({ error: "contactId is required" }, { status: 400 });
+  }
+
+  const contact = await prisma.contact.findFirst({ where: { id: contactId, propertyId: id } });
+  if (!contact) {
+    return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+  }
+
+  await prisma.contact.delete({ where: { id: contactId } });
 
   return NextResponse.json({ success: true });
 }

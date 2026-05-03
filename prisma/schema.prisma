@@ -58,6 +58,7 @@ model Property {
   contacts            Contact[]
   notes               Note[]
   photos              Photo[]
+  thumbnailUrl        String?
   activities          Activity[]
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
@@ -110,7 +111,10 @@ model Photo {
   url         String
   filename    String
   order       Int       @default(0)
+  isThumbnail Boolean   @default(false)
   createdAt   DateTime  @default(now())
+
+  @@index([propertyId, order])
 }
 
 model Activity {
