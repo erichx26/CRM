@@ -95,7 +95,7 @@ export default function PropertyDetailPage() {
   const photosSectionRef = useRef<HTMLDivElement>(null);
 
   const updateMutation = useMutation({
-    mutationFn: async (data: typeof form) => {
+    mutationFn: async (data: Partial<typeof form>) => {
       const res = await fetch(`/api/properties/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -576,13 +576,29 @@ export default function PropertyDetailPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <span className={`px-2 py-1 rounded-md text-xs font-medium ${statusColors[property.status]}`}>
-                      {property.status}
-                    </span>
-                    <span className={`px-2 py-1 rounded-md text-xs font-medium ${priorityColors[property.priority]}`}>
-                      {property.priority}
-                    </span>
+                  <div className="flex gap-2 items-center">
+                    <select
+                      value={property.status}
+                      onChange={(e) => updateMutation.mutate({ status: e.target.value })}
+                      className={`px-2 py-1 rounded-md text-xs font-medium border-0 cursor-pointer ${statusColors[property.status]}`}
+                      style={{ backgroundColor: 'rgba(30, 39, 56, 0.8)' }}
+                    >
+                      <option value="NEW">NEW</option>
+                      <option value="CONTACTED">CONTACTED</option>
+                      <option value="NEGOTIATING">NEGOTIATING</option>
+                      <option value="CLOSED">CLOSED</option>
+                      <option value="DEAD">DEAD</option>
+                    </select>
+                    <select
+                      value={property.priority}
+                      onChange={(e) => updateMutation.mutate({ priority: e.target.value })}
+                      className={`px-2 py-1 rounded-md text-xs font-medium border-0 cursor-pointer ${priorityColors[property.priority]}`}
+                      style={{ backgroundColor: 'rgba(30, 39, 56, 0.8)' }}
+                    >
+                      <option value="HIGH">HIGH</option>
+                      <option value="MEDIUM">MEDIUM</option>
+                      <option value="LOW">LOW</option>
+                    </select>
                   </div>
                 </div>
 
