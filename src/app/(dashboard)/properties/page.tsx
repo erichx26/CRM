@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -24,6 +24,7 @@ async function fetchProperties(params: {
   search?: string;
   status?: string;
   priority?: string;
+  followUp?: string;
 }) {
   const searchParams = new URLSearchParams();
   if (params.page) searchParams.set("page", params.page.toString());
@@ -31,6 +32,7 @@ async function fetchProperties(params: {
   if (params.search) searchParams.set("search", params.search);
   if (params.status) searchParams.set("status", params.status);
   if (params.priority) searchParams.set("priority", params.priority);
+  if (params.followUp) searchParams.set("followUp", params.followUp);
 
   const res = await fetch(`/api/properties?${searchParams.toString()}`);
   return res.json();
@@ -70,9 +72,21 @@ function PropertiesContent() {
   const [limit, setLimit] = useState(25);
 
   const page = parseInt(searchParams.get("page") || "1");
+
+  // Use filter values directly from searchParams to ensure reactivity
+  const activeStatus = searchParams.get("status") || "";
+  const activePriority = searchParams.get("priority") || "";
+  const activeFollowUp = searchParams.get("followUp") || "";
+
+  // Sync filter state when URL changes externally (e.g. sidebar navigation)
+  useEffect(() => {
+    setStatus(activeStatus);
+    setPriority(activePriority);
+  }, [activeStatus, activePriority]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ["properties", { page, search, status, priority, limit }],
-    queryFn: () => fetchProperties({ page, limit, search, status, priority }),
+    queryKey: ["properties", { page, search, status: activeStatus, priority: activePriority, followUp: activeFollowUp, limit }],
+    queryFn: () => fetchProperties({ page, limit, search, status: activeStatus, priority: activePriority, followUp: activeFollowUp }),
   });
 
   const properties = data?.properties || [];
@@ -107,7 +121,7 @@ function PropertiesContent() {
     setSearch("");
     setStatus("");
     setPriority("");
-    router.push("/properties");
+    router.replace("/properties");
   }
 
   function toggleSelect(id: string) {

@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search") || "";
   const status = searchParams.get("status");
   const priority = searchParams.get("priority");
+  const followUp = searchParams.get("followUp");
 
   const where: Record<string, unknown> = {};
 
@@ -37,6 +38,9 @@ export async function GET(req: NextRequest) {
   }
   if (status) where.status = status;
   if (priority) where.priority = priority;
+  if (followUp === "upcoming") {
+    where.followUpDate = { gte: new Date(new Date().setHours(0, 0, 0, 0)) };
+  }
 
   const [properties, total] = await Promise.all([
     prisma.property.findMany({

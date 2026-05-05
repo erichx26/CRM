@@ -107,6 +107,7 @@ export default function PropertyDetailPage() {
     onSuccess: (data) => {
       console.log("Update success:", data);
       queryClient.invalidateQueries({ queryKey: ["property", id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setEditing(false);
     },
     onError: (error) => {
@@ -126,6 +127,7 @@ export default function PropertyDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setNewNote("");
     },
   });
@@ -137,6 +139,7 @@ export default function PropertyDetailPage() {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       router.push("/properties");
     },
   });
@@ -157,6 +160,7 @@ export default function PropertyDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setShowContactForm(false);
       setContactForm({ ownerName: "", emails: "", phones: "" });
     },
@@ -177,6 +181,7 @@ export default function PropertyDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
   });
 
@@ -199,6 +204,7 @@ export default function PropertyDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setSelectedPhotos(new Set());
       setSelectMode(false);
     },
@@ -209,6 +215,7 @@ export default function PropertyDetailPage() {
       await deletePhotoMutation.mutateAsync(pid);
     }
     queryClient.invalidateQueries({ queryKey: ["property", id] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     setSelectedPhotos(new Set());
     setSelectMode(false);
   };
@@ -221,7 +228,10 @@ export default function PropertyDetailPage() {
         body: JSON.stringify({ photoId }),
       });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["property", id] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["property", id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
   });
 
   const updateContactMutation = useMutation({
@@ -241,6 +251,7 @@ export default function PropertyDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setEditingContact(null);
       setContactForm({ ownerName: "", emails: "", phones: "" });
       setShowContactForm(false);
@@ -259,6 +270,7 @@ export default function PropertyDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setEditingNote(null);
       setEditNoteContent("");
     },
@@ -270,7 +282,10 @@ export default function PropertyDetailPage() {
       if (!res.ok) throw new Error("Failed to delete contact");
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["property", id] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["property", id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
   });
 
   const deleteNoteMutation = useMutation({
@@ -281,6 +296,7 @@ export default function PropertyDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setEditingNote(null);
       setEditNoteContent("");
     },
@@ -630,12 +646,15 @@ export default function PropertyDetailPage() {
 
                 <div className="flex items-center gap-4 text-sm text-[#94a3b8]">
                   <span>Added: {new Date(property.createdAt).toLocaleDateString()}</span>
-                  {property.followUpDate && (
-                    <span className="text-[#f59e0b] flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      Follow-up: {new Date(property.followUpDate).toLocaleDateString()}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4 text-[#f59e0b]" />
+                    <input
+                      type="date"
+                      value={property.followUpDate ? new Date(property.followUpDate).toISOString().split("T")[0] : ""}
+                      onChange={(e) => updateMutation.mutate({ followUpDate: e.target.value || undefined })}
+                      className="bg-transparent text-[#f59e0b] cursor-pointer hover:text-[#fbbf24] focus:outline-none"
+                    />
+                  </div>
                 </div>
 
                 {/* Property Details */}
@@ -882,7 +901,7 @@ export default function PropertyDetailPage() {
               </div>
             </div>
             <div className="max-h-48 overflow-y-auto space-y-2">
-              {[...notes].reverse().map((n: { id: string; content: string; createdBy: { name: string }; createdAt: string }) => (
+              {notes.map((n: { id: string; content: string; createdBy: { name: string }; createdAt: string }) => (
                 <div key={n.id} className="p-3 bg-[#161d2e] rounded-lg group">
                   <div className="flex items-start justify-between">
                     <p className="text-sm whitespace-pre-wrap text-[#94a3b8] flex-1">

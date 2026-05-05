@@ -8,6 +8,8 @@ import {
   AlertCircle,
   Plus,
   ArrowUpRight,
+  Calendar,
+  Phone,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -23,6 +25,8 @@ export default function DashboardPage() {
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: fetchStats,
+    staleTime: 30000,
+    refetchInterval: 10000,
   });
 
   const stats = {
@@ -60,36 +64,55 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         {[
           {
             label: "Total Properties",
             value: stats.total,
             icon: MapPin,
             color: "from-[#3b82f6] to-[#8b5cf6]",
+            href: "/properties",
           },
           {
             label: "New Leads",
             value: stats.new,
             icon: TrendingUp,
             color: "from-[#22c55e] to-[#16a34a]",
+            href: "/properties?status=NEW",
+          },
+          {
+            label: "Contacted",
+            value: stats.contacted,
+            icon: Phone,
+            color: "from-[#3b82f6] to-[#2563eb]",
+            href: "/properties?status=CONTACTED",
           },
           {
             label: "In Negotiation",
             value: stats.negotiating,
             icon: Clock,
             color: "from-[#f59e0b] to-[#d97706]",
+            href: "/properties?status=NEGOTIATING",
           },
           {
             label: "High Priority",
             value: stats.highPriority,
             icon: AlertCircle,
             color: "from-[#ef4444] to-[#dc2626]",
+            href: "/properties?priority=HIGH",
+          },
+          {
+            label: "Follow-up",
+            value: stats.followUp,
+            icon: Calendar,
+            color: "from-[#ec4899] to-[#db2777]",
+            href: "/properties?followUp=upcoming",
           },
         ].map((stat, i) => (
-          <div
+          <Link
             key={stat.label}
-            className={`glass-card p-5 animate-fade-in stagger-${i + 1}`}
+            href={stat.href}
+            className={`glass-card p-5 animate-fade-in stagger-${i + 1} hover:bg-[#1e2738] transition-all group`}
           >
             <div className="flex items-start justify-between">
               <div>
@@ -100,7 +123,7 @@ export default function DashboardPage() {
                 <stat.icon className="w-5 h-5 text-white" />
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
@@ -157,6 +180,7 @@ export default function DashboardPage() {
                   today.setHours(0, 0, 0, 0);
                   return followUp >= today;
                 })
+                .sort((a: { followUpDate: string }, b: { followUpDate: string }) => new Date(a.followUpDate).getTime() - new Date(b.followUpDate).getTime())
                 .slice(0, 5)
                 .map((property: { id: string; addressRaw: string; followUpDate: string }) => (
                   <Link
@@ -171,6 +195,38 @@ export default function DashboardPage() {
                     <span className="text-xs text-[#94a3b8]">
                       {new Date(property.followUpDate).toLocaleDateString()}
                     </span>
+                  </Link>
+                ))
+            )}
+          </div>
+        </div>
+
+        {/* High Priority */}
+        <div className="glass-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold">High Priority</h2>
+            <span className="text-sm text-[#ef4444]">{stats.highPriority} properties</span>
+          </div>
+          <div className="space-y-3">
+            {isLoading ? (
+              <p className="text-[#94a3b8]">Loading...</p>
+            ) : stats.highPriority === 0 ? (
+              <p className="text-[#94a3b8]">No high priority properties.</p>
+            ) : (
+              properties
+                .filter((p: { priority: string }) => p.priority === "HIGH")
+                .slice(0, 5)
+                .map((property: { id: string; addressRaw: string; priority: string }) => (
+                  <Link
+                    key={property.id}
+                    href={`/properties/${property.id}`}
+                    className="flex items-center justify-between p-3 bg-[#161d2e] rounded-lg hover:bg-[#1e2738] transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="w-4 h-4 text-[#ef4444]" />
+                      <span className="text-sm font-medium">{property.addressRaw}</span>
+                    </div>
+                    <ArrowUpRight className="w-4 h-4 text-[#94a3b8] group-hover:text-white" />
                   </Link>
                 ))
             )}

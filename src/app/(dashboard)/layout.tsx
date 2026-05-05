@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { Suspense, useEffect, useState } from "react";
 import {
   Building2,
   LayoutDashboard,
@@ -11,6 +12,7 @@ import {
   Settings,
   LogOut,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 
 const navigation = [
@@ -18,6 +20,123 @@ const navigation = [
   { name: "Properties", href: "/properties", icon: MapPin },
   { name: "CSV Import", href: "/import", icon: Upload },
 ];
+
+const propertySubLinks = [
+  { name: "All Properties", href: "/properties" },
+  { name: "New Leads", href: "/properties?status=NEW" },
+  { name: "Contacted", href: "/properties?status=CONTACTED" },
+  { name: "In Negotiation", href: "/properties?status=NEGOTIATING" },
+  { name: "Closed", href: "/properties?status=CLOSED" },
+  { name: "High Priority", href: "/properties?priority=HIGH" },
+  { name: "Follow-up", href: "/properties?followUp=upcoming" },
+];
+
+function getStatusParam(searchParams: URLSearchParams): string {
+  const status = searchParams.get("status");
+  const priority = searchParams.get("priority");
+  const followUp = searchParams.get("followUp");
+  if (status) return `status=${status}`;
+  if (priority) return `priority=${priority}`;
+  if (followUp) return `followUp=${followUp}`;
+  return "";
+}
+
+function getSubLinkKey(href: string): string {
+  if (href === "/properties") return "";
+  const match = href.match(/status=(\w+)/);
+  if (match) return `status=${match[1]}`;
+  const pMatch = href.match(/priority=(\w+)/);
+  if (pMatch) return `priority=${pMatch[1]}`;
+  const fMatch = href.match(/followUp=(\w+)/);
+  if (fMatch) return `followUp=${fMatch[1]}`;
+  return "";
+}
+
+function SidebarNav() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
+  const [currentFilter, setCurrentFilter] = useState(() => getStatusParam(searchParams));
+  const [menuExpanded, setMenuExpanded] = useState(true);
+
+  useEffect(() => {
+    setCurrentFilter(getStatusParam(searchParams));
+  }, [searchParams]);
+
+  useEffect(() => {
+    const handleChange = () => {
+      setCurrentFilter(getStatusParam(new URLSearchParams(window.location.search)));
+    };
+    window.addEventListener("popstate", handleChange);
+    return () => window.removeEventListener("popstate", handleChange);
+  }, []);
+
+  // Auto-expand when on dashboard or properties pages
+  useEffect(() => {
+    if (pathname === "/dashboard" || pathname.startsWith("/properties")) {
+      setMenuExpanded(true);
+    }
+  }, [pathname]);
+
+  const isExpanded = menuExpanded;
+
+  return (
+    <nav className="flex-1 p-4 space-y-1">
+      {navigation.map((item) => {
+        if (item.name === "Properties") {
+          return (
+            <div key={item.name}>
+              <button
+                onClick={() => setMenuExpanded(!menuExpanded)}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-[#94a3b8] hover:text-white hover:bg-[#161d2e] transition-all"
+              >
+                <item.icon className="w-4 h-4" />
+                <span className="flex-1 text-left">Properties</span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+              </button>
+              {isExpanded && (
+                <div className="ml-4 mt-1 space-y-1 border-l border-[#1e2738] pl-3">
+                  {propertySubLinks.map((sub) => {
+                    const subKey = getSubLinkKey(sub.href);
+                    const isSubActive = currentFilter === subKey || (sub.href === "/properties" && !currentFilter);
+                    return (
+                      <Link
+                        key={sub.name}
+                        href={sub.href}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                          isSubActive
+                            ? "bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20"
+                            : "text-[#94a3b8] hover:text-white hover:bg-[#161d2e]"
+                        }`}
+                      >
+                        {sub.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        }
+        const isActive = pathname === item.href;
+        return (
+          <Link
+            key={item.name}
+            href={item.href}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              isActive
+                ? "bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20"
+                : "text-[#94a3b8] hover:text-white hover:bg-[#161d2e]"
+            }`}
+          >
+            <item.icon className="w-4 h-4" />
+            {item.name}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -44,26 +163,9 @@ export default function DashboardLayout({
           </Link>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20"
-                    : "text-[#94a3b8] hover:text-white hover:bg-[#161d2e]"
-                }`}
-              >
-                <item.icon className="w-4 h-4" />
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
+        <Suspense fallback={<div className="flex-1 p-4" />}>
+          <SidebarNav />
+        </Suspense>
 
         {/* Footer */}
         <div className="p-4 border-t border-[#1e2738] space-y-2">
