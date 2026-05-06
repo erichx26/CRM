@@ -129,6 +129,38 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* High Priority */}
+        <div className="glass-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold">High Priority</h2>
+            <Link href="/properties?priority=HIGH" className="text-sm text-[#ef4444] hover:underline">{stats.highPriority} properties</Link>
+          </div>
+          <div className="space-y-3">
+            {isLoading ? (
+              <p className="text-[#94a3b8]">Loading...</p>
+            ) : stats.highPriority === 0 ? (
+              <p className="text-[#94a3b8]">No high priority properties.</p>
+            ) : (
+              properties
+                .filter((p: { priority: string }) => p.priority === "HIGH")
+                .slice(0, 5)
+                .map((property: { id: string; addressRaw: string; city?: string; state?: string; priority: string }) => (
+                  <Link
+                    key={property.id}
+                    href={`/properties/${property.id}`}
+                    className="flex items-center justify-between p-3 bg-[#161d2e] rounded-lg hover:bg-[#1e2738] transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="w-4 h-4 text-[#ef4444]" />
+                      <span className="text-sm font-medium">{property.addressRaw}{property.city ? `, ${property.city}` : ""}{property.state ? `, ${property.state}` : ""}</span>
+                    </div>
+                    <ArrowUpRight className="w-4 h-4 text-[#94a3b8] group-hover:text-white" />
+                  </Link>
+                ))
+            )}
+          </div>
+        </div>
+
         {/* Recent Properties */}
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-4">
@@ -143,7 +175,7 @@ export default function DashboardPage() {
             ) : properties.length === 0 ? (
               <p className="text-[#94a3b8]">No properties yet. Add your first lead!</p>
             ) : (
-              properties.slice(0, 5).map((property: { id: string; addressRaw: string; status: string; priority: string }) => (
+              properties.slice(0, 5).map((property: { id: string; addressRaw: string; city?: string; state?: string; status: string; priority: string }) => (
                 <Link
                   key={property.id}
                   href={`/properties/${property.id}`}
@@ -151,7 +183,7 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-[#3b82f6]" />
-                    <span className="text-sm font-medium">{property.addressRaw}</span>
+                    <span className="text-sm font-medium">{property.addressRaw}{property.city ? `, ${property.city}` : ""}{property.state ? `, ${property.state}` : ""}</span>
                   </div>
                   <ArrowUpRight className="w-4 h-4 text-[#94a3b8] group-hover:text-white" />
                 </Link>
@@ -164,7 +196,7 @@ export default function DashboardPage() {
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold">Follow Up Needed</h2>
-            <span className="text-sm text-[#f59e0b]">{stats.followUp} pending</span>
+            <Link href="/properties?followUp=upcoming" className="text-sm text-[#f59e0b] hover:underline">{stats.followUp} pending</Link>
           </div>
           <div className="space-y-3">
             {isLoading ? (
@@ -182,7 +214,7 @@ export default function DashboardPage() {
                 })
                 .sort((a: { followUpDate: string }, b: { followUpDate: string }) => new Date(a.followUpDate).getTime() - new Date(b.followUpDate).getTime())
                 .slice(0, 5)
-                .map((property: { id: string; addressRaw: string; followUpDate: string }) => (
+                .map((property: { id: string; addressRaw: string; city?: string; state?: string; followUpDate: string }) => (
                   <Link
                     key={property.id}
                     href={`/properties/${property.id}`}
@@ -190,43 +222,11 @@ export default function DashboardPage() {
                   >
                     <div className="flex items-center gap-3">
                       <Clock className="w-4 h-4 text-[#f59e0b]" />
-                      <span className="text-sm font-medium">{property.addressRaw}</span>
+                      <span className="text-sm font-medium">{property.addressRaw}{property.city ? `, ${property.city}` : ""}{property.state ? `, ${property.state}` : ""}</span>
                     </div>
                     <span className="text-xs text-[#94a3b8]">
                       {new Date(property.followUpDate).toLocaleDateString()}
                     </span>
-                  </Link>
-                ))
-            )}
-          </div>
-        </div>
-
-        {/* High Priority */}
-        <div className="glass-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold">High Priority</h2>
-            <span className="text-sm text-[#ef4444]">{stats.highPriority} properties</span>
-          </div>
-          <div className="space-y-3">
-            {isLoading ? (
-              <p className="text-[#94a3b8]">Loading...</p>
-            ) : stats.highPriority === 0 ? (
-              <p className="text-[#94a3b8]">No high priority properties.</p>
-            ) : (
-              properties
-                .filter((p: { priority: string }) => p.priority === "HIGH")
-                .slice(0, 5)
-                .map((property: { id: string; addressRaw: string; priority: string }) => (
-                  <Link
-                    key={property.id}
-                    href={`/properties/${property.id}`}
-                    className="flex items-center justify-between p-3 bg-[#161d2e] rounded-lg hover:bg-[#1e2738] transition-all group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <AlertCircle className="w-4 h-4 text-[#ef4444]" />
-                      <span className="text-sm font-medium">{property.addressRaw}</span>
-                    </div>
-                    <ArrowUpRight className="w-4 h-4 text-[#94a3b8] group-hover:text-white" />
                   </Link>
                 ))
             )}
