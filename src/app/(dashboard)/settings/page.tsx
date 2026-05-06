@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import { User, Download, Database, Save, Loader2 } from "lucide-react";
+import { User, Download, Database, Save, Loader2, Plus, Trash2, Key, X } from "lucide-react";
 
 async function fetchProfile() {
   const res = await fetch("/api/users/me");
@@ -70,6 +70,52 @@ async function exportBackup() {
   window.URL.revokeObjectURL(url);
 }
 
+async function fetchUsers() {
+  const res = await fetch("/api/users");
+  if (!res.ok) throw new Error("Failed to fetch users");
+  return res.json();
+}
+
+async function createUser(data: { email: string; password: string; name: string; role: string }) {
+  const res = await fetch("/api/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Failed to create user");
+  return body;
+}
+
+async function updateUser(id: string, data: { name?: string; role?: string }) {
+  const res = await fetch(`/api/users/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json();
+    throw new Error(body.error || "Failed to update user");
+  }
+  return res.json();
+}
+
+async function deleteUser(id: string) {
+  const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const body = await res.json();
+    throw new Error(body.error || "Failed to delete user");
+  }
+  return res.json();
+}
+
+async function resetUserPassword(id: string) {
+  const res = await fetch(`/api/users/${id}/reset-password`, { method: "POST" });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || "Failed to reset password");
+  return body;
+}
+
 export default function SettingsPage() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
@@ -85,6 +131,20 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [passwordMsg, setPasswordMsg] = useState("");
+
+  // User management
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({ email: "", password: "", name: "", role: "POWER_USER" });
+  const [addUserError, setAddUserError] = useState("");
+  const [addUserSuccess, setAddUserSuccess] = useState("");
+  const [resetPasswordResult, setResetPasswordResult] = useState<{ id: string; tempPassword: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const { data: users, refetch: refetchUsers } = useQuery({
+    queryKey: ["users"],
+    queryFn: fetchUsers,
+    enabled: isAdmin,
+  });
 
   useState(() => {
     if (profile) setName(profile.name || "");
@@ -107,6 +167,52 @@ export default function SettingsPage() {
     },
     onError: (err: Error) => {
       setPasswordMsg(err.message);
+    },
+  });
+
+  const createUserMutation = useMutation({
+    mutationFn: createUser,
+    onSuccess: (data) => {
+      setAddUserSuccess(`User created! Temp password: ${data.tempPassword}`);
+      setAddUserError("");
+      setNewUserForm({ email: "", password: "", name: "", role: "POWER_USER" });
+      refetchUsers();
+      setTimeout(() => setAddUserSuccess(""), 10000);
+    },
+    onError: (err: Error) => {
+      setAddUserError(err.message);
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { name?: string; role?: string } }) => updateUser(id, data),
+    onSuccess: () => {
+      refetchUsers();
+    },
+    onError: (err: Error) => {
+      alert(err.message);
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: deleteUser,
+    onSuccess: () => {
+      refetchUsers();
+      setDeleteConfirm(null);
+    },
+    onError: (err: Error) => {
+      alert(err.message);
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: resetUserPassword,
+    onSuccess: (data) => {
+      setResetPasswordResult({ id: data.id, tempPassword: data.tempPassword });
+      setTimeout(() => setResetPasswordResult(null), 30000);
+    },
+    onError: (err: Error) => {
+      alert(err.message);
     },
   });
 
@@ -269,6 +375,172 @@ export default function SettingsPage() {
               <Database className="w-4 h-4" />
               Download Backup
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* User Management Section (Admin Only) */}
+      {isAdmin && (
+        <div id="users" className="glass-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <User className="w-5 h-5" />
+              User Management
+            </h2>
+            <button
+              onClick={() => { setShowAddUser(true); setAddUserError(""); setAddUserSuccess(""); }}
+              className="flex items-center gap-1 px-3 py-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-lg text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Add User
+            </button>
+          </div>
+
+          {/* Add User Modal */}
+          {showAddUser && (
+            <div className="mb-6 p-4 bg-[#161d2e] rounded-lg border border-[#1e2738]">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium">Add New User</p>
+                <button onClick={() => setShowAddUser(false)} className="text-[#94a3b8] hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  placeholder="Full name"
+                  value={newUserForm.name}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                  className="px-3 py-2 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-sm"
+                />
+                <input
+                  type="email"
+                  placeholder="Email address"
+                  value={newUserForm.email}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                  className="px-3 py-2 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-sm"
+                />
+                <input
+                  type="password"
+                  placeholder="Password (min 6 chars)"
+                  value={newUserForm.password}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                  className="px-3 py-2 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-sm"
+                />
+                <select
+                  value={newUserForm.role}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value })}
+                  className="px-3 py-2 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-sm"
+                >
+                  <option value="POWER_USER">Power User</option>
+                  <option value="VIEWER">Viewer</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+              {addUserError && <p className="text-xs text-[#ef4444] mt-2">{addUserError}</p>}
+              {addUserSuccess && <p className="text-xs text-[#22c55e] mt-2">{addUserSuccess}</p>}
+              <button
+                onClick={() => {
+                  if (!newUserForm.email || !newUserForm.password || !newUserForm.name) {
+                    setAddUserError("All fields are required");
+                    return;
+                  }
+                  if (newUserForm.password.length < 6) {
+                    setAddUserError("Password must be at least 6 characters");
+                    return;
+                  }
+                  createUserMutation.mutate(newUserForm);
+                }}
+                disabled={createUserMutation.isPending}
+                className="mt-3 flex items-center gap-2 px-4 py-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-lg text-sm disabled:opacity-50"
+              >
+                {createUserMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                Create User
+              </button>
+            </div>
+          )}
+
+          {/* Reset Password Result */}
+          {resetPasswordResult && (
+            <div className="mb-4 p-3 bg-[#22c55e]/10 border border-[#22c55e]/20 rounded-lg">
+              <p className="text-sm text-[#22c55e]">
+                Temp password for user: <strong>{resetPasswordResult.tempPassword}</strong>
+              </p>
+              <p className="text-xs text-[#94a3b8] mt-1">Share this with the user — they should change it after logging in.</p>
+            </div>
+          )}
+
+          {/* Users Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[#94a3b8] border-b border-[#1e2738]">
+                  <th className="pb-3 font-medium">Name</th>
+                  <th className="pb-3 font-medium">Email</th>
+                  <th className="pb-3 font-medium">Role</th>
+                  <th className="pb-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users?.map((u: { id: string; name: string; email: string; role: string }) => (
+                  <tr key={u.id} className="border-b border-[#1e2738]/50">
+                    <td className="py-3 text-white">{u.name}</td>
+                    <td className="py-3 text-[#94a3b8]">{u.email}</td>
+                    <td className="py-3">
+                      <select
+                        value={u.role}
+                        onChange={(e) => updateUserMutation.mutate({ id: u.id, data: { role: e.target.value } })}
+                        disabled={updateUserMutation.isPending}
+                        className="px-2 py-1 bg-[#161d2e] border border-[#1e2738] rounded text-white text-xs"
+                      >
+                        <option value="ADMIN">Admin</option>
+                        <option value="POWER_USER">Power User</option>
+                        <option value="VIEWER">Viewer</option>
+                      </select>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => resetPasswordMutation.mutate(u.id)}
+                          disabled={resetPasswordMutation.isPending}
+                          className="px-2 py-1 bg-[#f59e0b]/10 text-[#f59e0b] text-xs rounded hover:bg-[#f59e0b]/20 disabled:opacity-50"
+                          title="Reset password"
+                        >
+                          <Key className="w-3 h-3" />
+                        </button>
+                        {deleteConfirm === u.id ? (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => deleteUserMutation.mutate(u.id)}
+                              disabled={deleteUserMutation.isPending}
+                              className="px-2 py-1 bg-[#ef4444] text-white text-xs rounded"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirm(null)}
+                              className="px-2 py-1 bg-[#1e2738] text-[#94a3b8] text-xs rounded"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDeleteConfirm(u.id)}
+                            className="px-2 py-1 bg-[#ef4444]/10 text-[#ef4444] text-xs rounded hover:bg-[#ef4444]/20"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {users?.length === 0 && (
+              <p className="text-sm text-[#94a3b8] py-4 text-center">No other users yet.</p>
+            )}
           </div>
         </div>
       )}

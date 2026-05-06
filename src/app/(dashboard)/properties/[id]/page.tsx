@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
@@ -53,10 +54,12 @@ function parseJsonField<T>(value: string, fallback: T): T {
 }
 
 export default function PropertyDetailPage() {
+  const { data: session } = useSession();
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
   const id = params.id as string;
+  const canEdit = session?.user?.role === "ADMIN" || session?.user?.role === "POWER_USER";
 
   const { data: property, isLoading } = useQuery({
     queryKey: ["property", id],
@@ -351,7 +354,7 @@ export default function PropertyDetailPage() {
           Back to Properties
         </Link>
         <div className="flex gap-2">
-          {!editing && (
+          {!editing && canEdit && (
             <>
               <button
                 onClick={() => setEditing(true)}
@@ -731,7 +734,7 @@ export default function PropertyDetailPage() {
           <div className="glass-card p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold">Owner / Contact Info</h2>
-              {!showContactForm && (
+              {!showContactForm && canEdit && (
                 <button
                   onClick={() => {
                     setContactForm({ ownerName: "", emails: "", phones: "" });
@@ -823,28 +826,32 @@ export default function PropertyDetailPage() {
                         </div>
                       </div>
                       <div className="flex gap-1 ml-2">
-                        <button
-                          onClick={() => {
-                            if (confirm("Delete this contact?")) deleteContactMutation.mutate(contact.id);
-                          }}
-                          className="px-2 py-1 text-xs bg-[#ef4444]/10 text-[#ef4444] rounded hover:bg-[#ef4444]/20"
-                        >
-                          Delete
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingContact(contact.id);
-                            setContactForm({
-                              ownerName: contact.ownerName || "",
-                              emails: parseJsonField<string[]>(contact.emails, []).join(", "),
-                              phones: parseJsonField<string[]>(contact.phones, []).join(", "),
-                            });
-                            setShowContactForm(true);
-                          }}
-                          className="px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded hover:bg-[#3b82f6]/20"
-                        >
-                          Edit
-                        </button>
+                        {canEdit && (
+                          <>
+                            <button
+                              onClick={() => {
+                                if (confirm("Delete this contact?")) deleteContactMutation.mutate(contact.id);
+                              }}
+                              className="px-2 py-1 text-xs bg-[#ef4444]/10 text-[#ef4444] rounded hover:bg-[#ef4444]/20"
+                            >
+                              Delete
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingContact(contact.id);
+                                setContactForm({
+                                  ownerName: contact.ownerName || "",
+                                  emails: parseJsonField<string[]>(contact.emails, []).join(", "),
+                                  phones: parseJsonField<string[]>(contact.phones, []).join(", "),
+                                });
+                                setShowContactForm(true);
+                              }}
+                              className="px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded hover:bg-[#3b82f6]/20"
+                            >
+                              Edit
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -857,6 +864,7 @@ export default function PropertyDetailPage() {
           <div className="glass-card p-6">
             <h2 className="font-semibold mb-4">Notes</h2>
             <div className="mb-4">
+              {canEdit && (
               <div className="flex gap-2">
                 {editingNote ? (
                   <>
@@ -899,6 +907,7 @@ export default function PropertyDetailPage() {
                   </>
                 )}
               </div>
+              )}
             </div>
             <div className="max-h-48 overflow-y-auto space-y-2">
               {notes.map((n: { id: string; content: string; createdBy: { name: string }; createdAt: string }) => (
@@ -908,18 +917,22 @@ export default function PropertyDetailPage() {
                       [{n.createdBy?.name?.split(' ').map((w: string) => w[0]).join('').toUpperCase()} {new Date(n.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })} {new Date(n.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}]: {n.content}
                     </p>
                     <div className="flex gap-1 ml-2">
-                      <button
-                        onClick={() => { if (confirm("Delete this note?")) deleteNoteMutation.mutate(n.id); }}
-                        className="px-2 py-1 text-xs bg-[#ef4444]/10 text-[#ef4444] rounded opacity-0 group-hover:opacity-100 hover:bg-[#ef4444]/20"
-                      >
-                        Delete
-                      </button>
-                      <button
-                        onClick={() => { setEditingNote(n.id); setEditNoteContent(n.content); }}
-                        className="px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded opacity-0 group-hover:opacity-100 hover:bg-[#3b82f6]/20"
-                      >
-                        Edit
-                      </button>
+                      {canEdit && (
+                        <>
+                          <button
+                            onClick={() => { if (confirm("Delete this note?")) deleteNoteMutation.mutate(n.id); }}
+                            className="px-2 py-1 text-xs bg-[#ef4444]/10 text-[#ef4444] rounded opacity-0 group-hover:opacity-100 hover:bg-[#ef4444]/20"
+                          >
+                            Delete
+                          </button>
+                          <button
+                            onClick={() => { setEditingNote(n.id); setEditNoteContent(n.content); }}
+                            className="px-2 py-1 text-xs bg-[#3b82f6]/10 text-[#3b82f6] rounded opacity-0 group-hover:opacity-100 hover:bg-[#3b82f6]/20"
+                          >
+                            Edit
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -931,6 +944,7 @@ export default function PropertyDetailPage() {
           <div ref={photosSectionRef} className="glass-card p-6 overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold">Photos {photos.length > 0 && `(${photos.length})`}</h2>
+              {canEdit && (
               <div className="flex gap-2">
                 {selectMode ? (
                   <>
@@ -1011,8 +1025,10 @@ export default function PropertyDetailPage() {
                   </>
                 )}
               </div>
+              )}
             </div>
             {photos.length === 0 ? (
+              canEdit ? (
               <label className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-[#1e2738] rounded-lg cursor-pointer hover:border-[#3b82f6]/50 transition-colors">
                 <Upload className="w-8 h-8 text-[#94a3b8] mb-2" />
                 <span className="text-sm text-[#94a3b8]">Click to upload photos</span>
@@ -1028,6 +1044,9 @@ export default function PropertyDetailPage() {
                   }}
                 />
               </label>
+              ) : (
+                <p className="text-sm text-[#94a3b8] py-8 text-center">No photos uploaded</p>
+              )
             ) : (
               <div className="flex gap-2 overflow-x-auto pb-2" style={{ maxWidth: 'calc(5 * 180px + 4 * 8px)' }}>
                 {photos.map((photo: { id: string; url: string; filename: string }, index: number) => (
@@ -1067,7 +1086,7 @@ export default function PropertyDetailPage() {
                     </button>
                   </div>
                 ))}
-                {!selectMode && (
+                {!selectMode && canEdit && (
                   <label className="flex-shrink-0 flex flex-col items-center justify-center w-[168px] h-[168px] border-2 border-dashed border-[#1e2738] rounded-lg cursor-pointer hover:border-[#3b82f6]/50 transition-colors">
                     <Plus className="w-6 h-6 text-[#94a3b8]" />
                     <span className="text-xs text-[#94a3b8] mt-1">Add</span>

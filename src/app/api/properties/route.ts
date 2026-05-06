@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { normalizeAddress, generateRedfinUrl, generateMapsUrl } from "@/lib/utils";
+import { canEdit } from "@/lib/permissions";
 
 const createPropertySchema = z.object({
   addressRaw: z.string().min(1),
@@ -65,6 +66,10 @@ export async function POST(req: NextRequest) {
 
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!canEdit(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const userId = session.user.id;

@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
         name,
         email,
         password: hashed,
-        role: isFirstUser ? "ADMIN" : "WRITER",
+        role: isFirstUser ? "ADMIN" : "POWER_USER",
       },
     });
 
