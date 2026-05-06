@@ -13,6 +13,7 @@ import {
   LogOut,
   ChevronRight,
   ChevronDown,
+  Activity,
 } from "lucide-react";
 
 const navigation = [
@@ -134,6 +135,19 @@ function SidebarNav() {
           </Link>
         );
       })}
+      {session?.user?.role === "ADMIN" && (
+        <Link
+          href="/activity"
+          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+            pathname === "/activity"
+              ? "bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/20"
+              : "text-[#94a3b8] hover:text-white hover:bg-[#161d2e]"
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          Activity Log
+        </Link>
+      )}
     </nav>
   );
 }
