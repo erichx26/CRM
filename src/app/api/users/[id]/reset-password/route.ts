@@ -23,5 +23,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     data: { password: hashedPassword },
   });
 
-  return NextResponse.json({ tempPassword });
+  return NextResponse.json({ id: user.id, tempPassword });
 }
