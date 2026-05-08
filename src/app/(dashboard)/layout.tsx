@@ -192,7 +192,7 @@ export default function DashboardLayout({
           </Link>
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3b82f6] to-[#8b5cf6] flex items-center justify-center text-xs font-medium">
-              {session?.user?.name?.[0]?.toUpperCase() || "U"}
+              {(session?.user?.name || "").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() || "U"}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{session?.user?.name}</p>

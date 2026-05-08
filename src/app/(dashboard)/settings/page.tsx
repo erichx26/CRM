@@ -76,11 +76,11 @@ async function fetchUsers() {
   return res.json();
 }
 
-async function createUser(data: { email: string; password: string; name: string; role: string }) {
+async function createUser(data: { firstName: string; lastName: string; email: string; password: string; role: string }) {
   const res = await fetch("/api/users", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ name: `${data.firstName} ${data.lastName}`.trim(), email: data.email, password: data.password, role: data.role }),
   });
   const text = await res.text();
   let body;
@@ -130,6 +130,10 @@ export default function SettingsPage() {
     queryFn: fetchProfile,
   });
 
+  const initials = profile?.name
+    ? profile.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
+    : "U";
+
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -138,7 +142,7 @@ export default function SettingsPage() {
 
   // User management
   const [showAddUser, setShowAddUser] = useState(false);
-  const [newUserForm, setNewUserForm] = useState({ email: "", password: "", name: "", role: "POWER_USER" });
+  const [newUserForm, setNewUserForm] = useState({ firstName: "", lastName: "", email: "", password: "", role: "POWER_USER" });
   const [addUserError, setAddUserError] = useState("");
   const [addUserSuccess, setAddUserSuccess] = useState("");
   const [resetPasswordResult, setResetPasswordResult] = useState<{ id: string; tempPassword: string } | null>(null);
@@ -179,7 +183,7 @@ export default function SettingsPage() {
     onSuccess: (data) => {
       setAddUserSuccess(`User created! Temp password: ${data.tempPassword}`);
       setAddUserError("");
-      setNewUserForm({ email: "", password: "", name: "", role: "POWER_USER" });
+      setNewUserForm({ firstName: "", lastName: "", email: "", password: "", role: "POWER_USER" });
       refetchUsers();
       setTimeout(() => setAddUserSuccess(""), 10000);
     },
@@ -253,7 +257,7 @@ export default function SettingsPage() {
           {/* Avatar */}
           <div className="flex items-center gap-4 mb-4">
             <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#3b82f6] to-[#8b5cf6] flex items-center justify-center text-lg font-medium">
-              {profile?.name?.[0]?.toUpperCase() || "U"}
+              {initials}
             </div>
             <div>
               <p className="text-sm text-[#94a3b8]">Avatar</p>
@@ -359,9 +363,16 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     type="text"
-                    placeholder="Full name"
-                    value={newUserForm.name}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                    placeholder="First name"
+                    value={newUserForm.firstName}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, firstName: e.target.value })}
+                    className="px-2.5 py-1.5 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-xs"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Last name"
+                    value={newUserForm.lastName}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, lastName: e.target.value })}
                     className="px-2.5 py-1.5 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-xs"
                   />
                   <input
@@ -392,7 +403,7 @@ export default function SettingsPage() {
                 {addUserSuccess && <p className="text-xs text-[#22c55e] mt-1.5">{addUserSuccess}</p>}
                 <button
                   onClick={() => {
-                    if (!newUserForm.email || !newUserForm.password || !newUserForm.name) {
+                    if (!newUserForm.email || !newUserForm.password || !newUserForm.firstName || !newUserForm.lastName) {
                       setAddUserError("All fields required");
                       return;
                     }
