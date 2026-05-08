@@ -58,8 +58,7 @@ export async function POST(req: NextRequest) {
       select: { id: true, name: true, email: true, role: true, createdAt: true },
     });
   } catch (e) {
-    console.error("[POST /api/users] Prisma error:", e);
-    return NextResponse.json({ error: "Failed to create user", detail: String(e) }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
   }
 
   return NextResponse.json({ ...user, tempPassword: password }, { status: 201 });
