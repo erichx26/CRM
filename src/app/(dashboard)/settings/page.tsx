@@ -82,7 +82,9 @@ async function createUser(data: { email: string; password: string; name: string;
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  const body = await res.json();
+  const text = await res.text();
+  let body;
+  try { body = JSON.parse(text); } catch { throw new Error(text || "Server error"); }
   if (!res.ok) throw new Error(body.error || "Failed to create user");
   return body;
 }
@@ -93,25 +95,27 @@ async function updateUser(id: string, data: { name?: string; role?: string }) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!res.ok) {
-    const body = await res.json();
-    throw new Error(body.error || "Failed to update user");
-  }
-  return res.json();
+  const text = await res.text();
+  let body;
+  try { body = JSON.parse(text); } catch { throw new Error(text || "Server error"); }
+  if (!res.ok) throw new Error(body.error || "Failed to update user");
+  return body;
 }
 
 async function deleteUser(id: string) {
   const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
-  if (!res.ok) {
-    const body = await res.json();
-    throw new Error(body.error || "Failed to delete user");
-  }
-  return res.json();
+  const text = await res.text();
+  let body;
+  try { body = JSON.parse(text); } catch { throw new Error(text || "Server error"); }
+  if (!res.ok) throw new Error(body.error || "Failed to delete user");
+  return body;
 }
 
 async function resetUserPassword(id: string) {
   const res = await fetch(`/api/users/${id}/reset-password`, { method: "POST" });
-  const body = await res.json();
+  const text = await res.text();
+  let body;
+  try { body = JSON.parse(text); } catch { throw new Error(text || "Server error"); }
   if (!res.ok) throw new Error(body.error || "Failed to reset password");
   return body;
 }
