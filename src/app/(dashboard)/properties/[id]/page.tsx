@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
+import toast from "react-hot-toast";
 import {
   ArrowLeft,
   MapPin,
@@ -88,7 +89,11 @@ export default function PropertyDetailPage() {
   const [newNote, setNewNote] = useState("");
   const [showContactForm, setShowContactForm] = useState(false);
   const [editingContact, setEditingContact] = useState<string | null>(null);
-  const [contactForm, setContactForm] = useState({ ownerName: "", emails: "", phones: "" });
+  const [contactForm, setContactForm] = useState<{
+    ownerName: string;
+    emails: { value: string; type: string }[];
+    phones: { value: string; type: string }[];
+  }>({ ownerName: "", emails: [{ value: "", type: "" }], phones: [{ value: "", type: "" }] });
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [editNoteContent, setEditNoteContent] = useState("");
@@ -108,13 +113,13 @@ export default function PropertyDetailPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      console.log("Update success:", data);
       queryClient.invalidateQueries({ queryKey: ["property", id] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setEditing(false);
+      toast.success("Property updated");
     },
-    onError: (error) => {
-      console.log("Update error:", error);
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update property");
     },
   });
 
@@ -132,6 +137,10 @@ export default function PropertyDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setNewNote("");
+      toast.success("Note added");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to add note");
     },
   });
 
@@ -144,6 +153,10 @@ export default function PropertyDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       router.push("/properties");
+      toast.success("Property deleted");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete property");
     },
   });
 
@@ -153,9 +166,9 @@ export default function PropertyDetailPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ownerName: data.ownerName,
-          emails: JSON.stringify(data.emails.split(",").map((e: string) => e.trim()).filter(Boolean)),
-          phones: JSON.stringify(data.phones.split(",").map((p: string) => p.trim()).filter(Boolean)),
+          ownerName: data.ownerName || undefined,
+          emails: data.emails.filter(e => e.value.trim()).map((e, i) => ({ value: e.value, type: e.type || undefined, order: i })),
+          phones: data.phones.filter(p => p.value.trim()).map((p, i) => ({ value: p.value, type: p.type || undefined, order: i })),
         }),
       });
       if (!res.ok) throw new Error("Failed to add contact");
@@ -165,7 +178,11 @@ export default function PropertyDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setShowContactForm(false);
-      setContactForm({ ownerName: "", emails: "", phones: "" });
+      setContactForm({ ownerName: "", emails: [{ value: "", type: "" }], phones: [{ value: "", type: "" }] });
+      toast.success("Contact added");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to add contact");
     },
   });
 
@@ -185,6 +202,10 @@ export default function PropertyDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      toast.success("Photos uploaded");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to upload photos");
     },
   });
 
@@ -196,6 +217,9 @@ export default function PropertyDetailPage() {
         throw new Error(text || "Failed to delete photo");
       }
       return res.json().catch(() => ({}));
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete photo");
     },
   });
 
@@ -210,6 +234,10 @@ export default function PropertyDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setSelectedPhotos(new Set());
       setSelectMode(false);
+      toast.success("All photos deleted");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete photos");
     },
   });
 
@@ -234,18 +262,22 @@ export default function PropertyDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      toast.success("Thumbnail updated");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to set thumbnail");
     },
   });
 
   const updateContactMutation = useMutation({
-    mutationFn: async ({ contactId, ownerName, emails, phones }: { contactId: string; ownerName: string; emails: string; phones: string }) => {
+    mutationFn: async ({ contactId, ownerName, emails, phones }: { contactId: string; ownerName: string; emails: { value: string; type: string }[]; phones: { value: string; type: string }[] }) => {
       const res = await fetch(`/api/properties/${id}/contacts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ownerName,
-          emails: JSON.stringify(emails.split(",").map((e: string) => e.trim()).filter(Boolean)),
-          phones: JSON.stringify(phones.split(",").map((p: string) => p.trim()).filter(Boolean)),
+          emails: emails.filter(e => e.value.trim()).map((e, i) => ({ value: e.value, type: e.type || undefined, order: i })),
+          phones: phones.filter(p => p.value.trim()).map((p, i) => ({ value: p.value, type: p.type || undefined, order: i })),
           updateId: contactId,
         }),
       });
@@ -256,8 +288,12 @@ export default function PropertyDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setEditingContact(null);
-      setContactForm({ ownerName: "", emails: "", phones: "" });
+      setContactForm({ ownerName: "", emails: [{ value: "", type: "" }], phones: [{ value: "", type: "" }] });
       setShowContactForm(false);
+      toast.success("Contact updated");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update contact");
     },
   });
 
@@ -276,6 +312,10 @@ export default function PropertyDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setEditingNote(null);
       setEditNoteContent("");
+      toast.success("Note updated");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update note");
     },
   });
 
@@ -288,6 +328,10 @@ export default function PropertyDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["property", id] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      toast.success("Contact deleted");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete contact");
     },
   });
 
@@ -302,6 +346,10 @@ export default function PropertyDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       setEditingNote(null);
       setEditNoteContent("");
+      toast.success("Note deleted");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete note");
     },
   });
 
@@ -737,7 +785,7 @@ export default function PropertyDetailPage() {
               {!showContactForm && canEdit && (
                 <button
                   onClick={() => {
-                    setContactForm({ ownerName: "", emails: "", phones: "" });
+                    setContactForm({ ownerName: "", emails: [{ value: "", type: "" }], phones: [{ value: "", type: "" }] });
                     setEditingContact("");
                     setShowContactForm(true);
                   }}
@@ -765,20 +813,92 @@ export default function PropertyDetailPage() {
                     onChange={(e) => setContactForm({ ...contactForm, ownerName: e.target.value })}
                     className="w-full px-3 py-2 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-sm"
                   />
-                  <input
-                    type="text"
-                    placeholder="Emails (comma separated)"
-                    value={contactForm.emails}
-                    onChange={(e) => setContactForm({ ...contactForm, emails: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-sm"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Phones (comma separated)"
-                    value={contactForm.phones}
-                    onChange={(e) => setContactForm({ ...contactForm, phones: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-sm"
-                  />
+                  <div className="space-y-2">
+                    <p className="text-xs text-[#94a3b8]">Emails</p>
+                    {contactForm.emails.map((email, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input
+                          type="email"
+                          placeholder="email@example.com"
+                          value={email.value}
+                          onChange={(e) => {
+                            const newEmails = [...contactForm.emails];
+                            newEmails[i] = { ...newEmails[i], value: e.target.value };
+                            setContactForm({ ...contactForm, emails: newEmails });
+                          }}
+                          className="flex-1 px-3 py-2 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-sm"
+                        />
+                        <input
+                          type="text"
+                          placeholder="type"
+                          value={email.type}
+                          onChange={(e) => {
+                            const newEmails = [...contactForm.emails];
+                            newEmails[i] = { ...newEmails[i], type: e.target.value };
+                            setContactForm({ ...contactForm, emails: newEmails });
+                          }}
+                          className="w-24 px-2 py-2 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-sm"
+                        />
+                        {contactForm.emails.length > 1 && (
+                          <button
+                            onClick={() => setContactForm({ ...contactForm, emails: contactForm.emails.filter((_, j) => j !== i) })}
+                            className="px-2 py-2 text-[#94a3b8] hover:text-white"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setContactForm({ ...contactForm, emails: [...contactForm.emails, { value: "", type: "" }] })}
+                      className="text-xs text-[#3b82f6] hover:text-[#2563eb]"
+                    >
+                      + Add email
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs text-[#94a3b8]">Phones</p>
+                    {contactForm.phones.map((phone, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input
+                          type="tel"
+                          placeholder="(555) 123-4567"
+                          value={phone.value}
+                          onChange={(e) => {
+                            const newPhones = [...contactForm.phones];
+                            newPhones[i] = { ...newPhones[i], value: e.target.value };
+                            setContactForm({ ...contactForm, phones: newPhones });
+                          }}
+                          className="flex-1 px-3 py-2 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-sm"
+                        />
+                        <input
+                          type="text"
+                          placeholder="type"
+                          value={phone.type}
+                          onChange={(e) => {
+                            const newPhones = [...contactForm.phones];
+                            newPhones[i] = { ...newPhones[i], type: e.target.value };
+                            setContactForm({ ...contactForm, phones: newPhones });
+                          }}
+                          className="w-24 px-2 py-2 bg-[#0f1520] border border-[#1e2738] rounded-lg text-white text-sm"
+                        />
+                        {contactForm.phones.length > 1 && (
+                          <button
+                            onClick={() => setContactForm({ ...contactForm, phones: contactForm.phones.filter((_, j) => j !== i) })}
+                            className="px-2 py-2 text-[#94a3b8] hover:text-white"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setContactForm({ ...contactForm, phones: [...contactForm.phones, { value: "", type: "" }] })}
+                      className="text-xs text-[#3b82f6] hover:text-[#2563eb]"
+                    >
+                      + Add phone
+                    </button>
+                  </div>
                   <button
                     onClick={() => {
                       if (editingContact) {
@@ -800,7 +920,7 @@ export default function PropertyDetailPage() {
               <p className="text-sm text-[#94a3b8]">No contact information yet.</p>
             ) : (
               <div className="space-y-4">
-                {contacts.map((contact: { id: string; ownerName?: string; emails: string; phones: string }) => (
+                {contacts.map((contact: { id: string; ownerName?: string; emails: { value: string; type?: string }[]; phones: { value: string; type?: string }[] }) => (
                   <div key={contact.id} className="p-4 bg-[#161d2e] rounded-lg">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -811,16 +931,16 @@ export default function PropertyDetailPage() {
                           </div>
                         )}
                         <div className="grid grid-cols-2 gap-4">
-                          {parseJsonField<string[]>(contact.emails, []).length > 0 && (
+                          {contact.emails && contact.emails.length > 0 && (
                             <div className="flex items-center gap-2 text-sm">
                               <Mail className="w-4 h-4 text-[#94a3b8]" />
-                              <span className="text-[#94a3b8]">{parseJsonField<string[]>(contact.emails, []).join(", ")}</span>
+                              <span className="text-[#94a3b8]">{contact.emails.map(e => e.value).join(", ")}</span>
                             </div>
                           )}
-                          {parseJsonField<string[]>(contact.phones, []).length > 0 && (
+                          {contact.phones && contact.phones.length > 0 && (
                             <div className="flex items-center gap-2 text-sm">
                               <Phone className="w-4 h-4 text-[#94a3b8]" />
-                              <span className="text-[#94a3b8]">{parseJsonField<string[]>(contact.phones, []).join(", ")}</span>
+                              <span className="text-[#94a3b8]">{contact.phones.map(p => p.value).join(", ")}</span>
                             </div>
                           )}
                         </div>
@@ -841,8 +961,8 @@ export default function PropertyDetailPage() {
                                 setEditingContact(contact.id);
                                 setContactForm({
                                   ownerName: contact.ownerName || "",
-                                  emails: parseJsonField<string[]>(contact.emails, []).join(", "),
-                                  phones: parseJsonField<string[]>(contact.phones, []).join(", "),
+                                  emails: contact.emails?.length ? contact.emails.map(e => ({ value: e.value, type: e.type || "" })) : [{ value: "", type: "" }],
+                                  phones: contact.phones?.length ? contact.phones.map(p => ({ value: p.value, type: p.type || "" })) : [{ value: "", type: "" }],
                                 });
                                 setShowContactForm(true);
                               }}

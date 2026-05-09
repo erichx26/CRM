@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
   const [properties, total] = await Promise.all([
     prisma.property.findMany({
       where,
-      include: { contacts: true, notes: true },
+      include: { contacts: { include: { emails: true, phones: true } }, notes: true },
       skip: (page - 1) * limit,
       take: limit,
       orderBy: { createdAt: "desc" },
@@ -61,70 +61,73 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  console.log("Session debug:", JSON.stringify(session));
+  try {
+    const session = await auth();
 
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!canEdit(session.user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const userId = session.user.id;
+
+    if (!userId) {
+      return NextResponse.json({ error: "User ID not found in session" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const parsed = createPropertySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid input", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { addressRaw, city, state, zip, status, priority, followUpDate } = parsed.data;
+    const addressNormalized = normalizeAddress(addressRaw);
+
+    const existing = await prisma.property.findFirst({
+      where: { addressNormalized },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { error: "Property with this address already exists" },
+        { status: 409 }
+      );
+    }
+
+    const property = await prisma.property.create({
+      data: {
+        addressRaw,
+        addressNormalized,
+        city,
+        state,
+        zip,
+        status: status || "NEW",
+        priority: priority || "MEDIUM",
+        followUpDate: followUpDate ? new Date(followUpDate) : null,
+        redfinUrl: generateRedfinUrl(addressRaw, city, state, zip),
+        mapsUrl: generateMapsUrl(addressRaw, city, state, zip),
+        createdById: userId,
+      },
+    });
+
+    await prisma.activity.create({
+      data: {
+        propertyId: property.id,
+        userId: userId,
+        action: "CREATED",
+        details: `Property created at ${addressRaw}`,
+      },
+    });
+
+    return NextResponse.json(property, { status: 201 });
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  if (!canEdit(session.user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const userId = session.user.id;
-  console.log("User ID:", userId);
-
-  if (!userId) {
-    return NextResponse.json({ error: "User ID not found in session" }, { status: 401 });
-  }
-
-  const body = await req.json();
-  const parsed = createPropertySchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid input", details: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
-
-  const { addressRaw, city, state, zip, status, priority, followUpDate } = parsed.data;
-  const addressNormalized = normalizeAddress(addressRaw);
-
-  const existing = await prisma.property.findFirst({
-    where: { addressNormalized },
-  });
-  if (existing) {
-    return NextResponse.json(
-      { error: "Property with this address already exists" },
-      { status: 409 }
-    );
-  }
-
-  const property = await prisma.property.create({
-    data: {
-      addressRaw,
-      addressNormalized,
-      city,
-      state,
-      zip,
-      status: status || "NEW",
-      priority: priority || "MEDIUM",
-      followUpDate: followUpDate ? new Date(followUpDate) : null,
-      redfinUrl: generateRedfinUrl(addressRaw, city, state, zip),
-      mapsUrl: generateMapsUrl(addressRaw, city, state, zip),
-      createdById: userId,
-    },
-  });
-
-  await prisma.activity.create({
-    data: {
-      propertyId: property.id,
-      userId: userId,
-      action: "CREATED",
-      details: `Property created at ${addressRaw}`,
-    },
-  });
-
-  return NextResponse.json(property, { status: 201 });
 }

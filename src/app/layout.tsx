@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { Toaster } from "react-hot-toast";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -21,7 +23,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${dmSans.className} min-h-screen bg-[#080b12] text-white antialiased`}>
-        <Providers>{children}</Providers>
+        <ErrorBoundary>
+          <Providers>{children}</Providers>
+        </ErrorBoundary>
+        <Toaster position="top-right" toastOptions={{ style: { background: "#0f1520", color: "#fff", border: "1px solid #1e2738" } }} />
       </body>
     </html>
   );

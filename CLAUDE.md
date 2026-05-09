@@ -11,38 +11,39 @@ New Chapter Real Estate CRM - a multi-tenant property lead management system for
 ## Commands
 
 ```bash
-npm run dev          # Start development server
+npm run dev          # Start development server (http://localhost:3000)
 npm run build        # Production build
 npm run start        # Start production server
 npm run lint         # ESLint check
 
 # Database
-npx prisma generate   # Regenerate Prisma client after schema changes
-npx prisma db push    # Push schema to database (dev)
-npx prisma migrate    # Apply migrations (production)
+npx prisma generate  # Regenerate Prisma client after schema changes
+npx prisma db push   # Push schema to database (dev)
+npx prisma migrate   # Apply migrations (production)
 ```
 
-**Environment variables required:** `DATABASE_URL`, `AUTH_SECRET` (NextAuth)
+**Environment variables required:** `DATABASE_URL`, `AUTH_SECRET`
 
 ## Architecture
 
 ### Route Groups
 - `(auth)/` - Unauthenticated routes (login page at `/login`)
-- `(dashboard)/` - Authenticated pages with sidebar layout
+- `(dashboard)/` - Authenticated pages with sidebar layout via `layout.tsx`
 - `api/` - REST API endpoints
 
 ### Authentication
 - NextAuth v5 with JWT strategy (credentials provider only)
 - Middleware at `src/middleware.ts` protects all routes except `/login`, `/api/auth/*`
-- Session: `{ id, email, name, role }` where role is `ADMIN | WRITER | READER`
-- Only ADMIN can delete properties
+- Session: `{ id, email, name, role }` where role is `ADMIN | POWER_USER | VIEWER`
+- Only ADMIN can delete properties and manage users — see `src/lib/permissions.ts` for role logic
 
 ### Data Model (Prisma/MySQL)
+- **User** - Roles: `ADMIN | POWER_USER | VIEWER`
 - **Property** - Core entity. Status: `NEW | CONTACTED | NEGOTIATING | CLOSED | DEAD`. Priority: `HIGH | MEDIUM | LOW`
 - **Contact** - JSON-stored emails/phones per property
 - **Note** - Text notes per property with author
-- **Activity** - Audit log: `CREATED | UPDATED | STATUS_CHANGED | NOTE_ADDED | CONTACT_ADDED | PHOTO_ADDED`
-- **User** - Admin/writer/reader roles
+- **Photo** - Property images ordered via `order` field, `isThumbnail` boolean marks the cover photo
+- **Activity** - Audit log: `CREATED | UPDATED | STATUS_CHANGED | NOTE_ADDED | CONTACT_ADDED | PHOTO_ADDED | PHOTO_DELETED`
 - **Session** - NextAuth session storage
 
 ### API Endpoints
@@ -53,13 +54,15 @@ npx prisma migrate    # Apply migrations (production)
 | `/api/properties/batch` | POST | ADMIN only |
 | `/api/properties/[id]/notes` | GET, POST | |
 | `/api/properties/[id]/contacts` | GET, POST | |
+| `/api/properties/[id]/photos` | GET, POST | |
+| `/api/properties/[id]/photos/set-thumbnail` | POST | Set property thumbnail |
 | `/api/upload/csv` | POST | Redfin CSV import with duplicate detection |
 | `/api/auth/[...nextauth]` | GET, POST | NextAuth handlers |
 | `/api/auth/register` | POST | |
 
 ### Frontend State
 - React Query (`useQuery`, `useMutation`) for all server state
-- Query key pattern: `["resources", { params }]`
+- Query key pattern: `["resources", { params }]` — always use array format for caching
 - URL search params for filter/pagination state
 
 ### Key Patterns

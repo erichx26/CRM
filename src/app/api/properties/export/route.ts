@@ -14,7 +14,7 @@ export async function GET() {
 
   const properties = await prisma.property.findMany({
     include: {
-      contacts: true,
+      contacts: { include: { emails: true, phones: true } },
       notes: { select: { id: true, content: true, createdAt: true } },
       photos: { select: { id: true, url: true, isThumbnail: true } },
     },
@@ -42,35 +42,63 @@ export async function GET() {
     "Redfin URL",
     "Maps URL",
     "Created At",
+    "Contact Name",
+    "Emails",
+    "Phone Numbers",
     "Notes Count",
-    "Contacts Count",
     "Photos Count",
   ];
 
-  const rows = properties.map((p) => [
-    p.addressRaw,
-    p.city || "",
-    p.state || "",
-    p.zip || "",
-    p.status,
-    p.priority,
-    p.followUpDate ? new Date(p.followUpDate).toLocaleDateString() : "",
-    p.propertyType || "",
-    p.beds?.toString() || "",
-    p.baths?.toString() || "",
-    p.squareFeet?.toString() || "",
-    p.lotSize?.toString() || "",
-    p.yearBuilt?.toString() || "",
-    p.mlsNumber || "",
-    p.source || "",
-    p.price?.toString() || "",
-    p.redfinUrl || "",
-    p.mapsUrl || "",
-    new Date(p.createdAt).toLocaleDateString(),
-    p.notes.length.toString(),
-    p.contacts.length.toString(),
-    p.photos.length.toString(),
-  ]);
+  // Helper to extract contact info from first contact (or empty strings)
+  const getContactInfo = (contacts: typeof properties[0]["contacts"]) => {
+    if (contacts.length === 0) {
+      return { name: "", emails: "", phones: "" };
+    }
+    const first = contacts[0];
+    const name = first.ownerName || "";
+    const emails = first.emails.map((e) => e.value).filter(Boolean).join("; ");
+    const phones = first.phones.map((p) => p.value).filter(Boolean).join("; ");
+    return { name, emails, phones };
+  };
+
+  // Prevent CSV formula injection — prefix cells starting with =, +, -, @ with '
+  const sanitizeCsvCell = (value: string): string => {
+    const trimmed = String(value).trim();
+    if (/^[=+\-@]/.test(trimmed)) {
+      return `'${trimmed}`;
+    }
+    return trimmed;
+  };
+
+  const rows = properties.map((p) => {
+    const { name, emails, phones } = getContactInfo(p.contacts);
+    return [
+      sanitizeCsvCell(p.addressRaw),
+      sanitizeCsvCell(p.city || ""),
+      sanitizeCsvCell(p.state || ""),
+      sanitizeCsvCell(p.zip || ""),
+      p.status,
+      p.priority,
+      p.followUpDate ? new Date(p.followUpDate).toLocaleDateString() : "",
+      sanitizeCsvCell(p.propertyType || ""),
+      p.beds?.toString() || "",
+      p.baths?.toString() || "",
+      p.squareFeet?.toString() || "",
+      p.lotSize?.toString() || "",
+      p.yearBuilt?.toString() || "",
+      sanitizeCsvCell(p.mlsNumber || ""),
+      sanitizeCsvCell(p.source || ""),
+      p.price?.toString() || "",
+      sanitizeCsvCell(p.redfinUrl || ""),
+      sanitizeCsvCell(p.mapsUrl || ""),
+      new Date(p.createdAt).toLocaleDateString(),
+      sanitizeCsvCell(name),
+      sanitizeCsvCell(emails),
+      sanitizeCsvCell(phones),
+      p.notes.length.toString(),
+      p.photos.length.toString(),
+    ];
+  });
 
   const csvContent = [
     headers.join(","),

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { User, Download, Database, Save, Loader2, Plus, Trash2, Key, X } from "lucide-react";
+import toast from "react-hot-toast";
 
 async function fetchProfile() {
   const res = await fetch("/api/users/me");
@@ -162,6 +163,10 @@ export default function SettingsPage() {
     mutationFn: updateProfile,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Profile updated");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to update profile");
     },
   });
 
@@ -171,10 +176,11 @@ export default function SettingsPage() {
       setPasswordMsg("Password changed successfully!");
       setCurrentPassword("");
       setNewPassword("");
+      toast.success("Password changed");
       setTimeout(() => setPasswordMsg(""), 3000);
     },
     onError: (err: Error) => {
-      setPasswordMsg(err.message);
+      toast.error(err.message || "Failed to change password");
     },
   });
 
@@ -185,10 +191,12 @@ export default function SettingsPage() {
       setAddUserError("");
       setNewUserForm({ firstName: "", lastName: "", email: "", password: "", role: "POWER_USER" });
       refetchUsers();
+      toast.success("User created");
       setTimeout(() => setAddUserSuccess(""), 10000);
     },
     onError: (err: Error) => {
       setAddUserError(err.message);
+      toast.error(err.message || "Failed to create user");
     },
   });
 
@@ -196,9 +204,10 @@ export default function SettingsPage() {
     mutationFn: ({ id, data }: { id: string; data: { name?: string; role?: string } }) => updateUser(id, data),
     onSuccess: () => {
       refetchUsers();
+      toast.success("User updated");
     },
     onError: (err: Error) => {
-      alert(err.message);
+      toast.error(err.message || "Failed to update user");
     },
   });
 
@@ -207,9 +216,10 @@ export default function SettingsPage() {
     onSuccess: () => {
       refetchUsers();
       setDeleteConfirm(null);
+      toast.success("User deleted");
     },
     onError: (err: Error) => {
-      alert(err.message);
+      toast.error(err.message || "Failed to delete user");
     },
   });
 
@@ -217,10 +227,11 @@ export default function SettingsPage() {
     mutationFn: resetUserPassword,
     onSuccess: (data) => {
       setResetPasswordResult({ id: data.id, tempPassword: data.tempPassword });
+      toast.success("Password reset");
       setTimeout(() => setResetPasswordResult(null), 30000);
     },
     onError: (err: Error) => {
-      alert(err.message);
+      toast.error(err.message || "Failed to reset password");
     },
   });
 

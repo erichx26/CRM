@@ -8,36 +8,46 @@ const updateProfileSchema = z.object({
 });
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+    });
+
+    return NextResponse.json(user);
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
-  });
-
-  return NextResponse.json(user);
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const parsed = updateProfileSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: session.user.id },
+      data: { name: parsed.data.name },
+      select: { id: true, name: true, email: true, role: true },
+    });
+
+    return NextResponse.json(user);
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  const body = await req.json();
-  const parsed = updateProfileSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
-  }
-
-  const user = await prisma.user.update({
-    where: { id: session.user.id },
-    data: { name: parsed.data.name },
-    select: { id: true, name: true, email: true, role: true },
-  });
-
-  return NextResponse.json(user);
 }

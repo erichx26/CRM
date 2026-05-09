@@ -4,6 +4,7 @@ import { useState, Suspense, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import toast from "react-hot-toast";
 import {
   Search,
   Filter,
@@ -105,6 +106,9 @@ function PropertiesContent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["properties"] });
       setSelectedIds([]);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete properties");
     },
   });
 
