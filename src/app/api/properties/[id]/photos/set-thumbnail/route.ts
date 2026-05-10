@@ -3,6 +3,16 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canEdit } from "@/lib/permissions";
 
+async function verifyPropertyAccess(propertyId: string, userId: string) {
+  const property = await prisma.property.findUnique({
+    where: { id: propertyId },
+    select: { id: true, createdById: true },
+  });
+  if (!property) return null;
+  if (property.createdById !== userId) return { forbidden: true };
+  return property;
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -18,6 +28,12 @@ export async function POST(
     }
 
     const { id } = await params;
+
+    const userId = session.user.id!;
+    const access = await verifyPropertyAccess(id, userId);
+    if (!access) return NextResponse.json({ error: "Property not found" }, { status: 404 });
+    if ("forbidden" in access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
     const { photoId } = await req.json();
 
     const photo = await prisma.photo.findFirst({ where: { id: photoId, propertyId: id } });

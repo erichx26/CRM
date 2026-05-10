@@ -187,7 +187,7 @@ export default function SettingsPage() {
   const createUserMutation = useMutation({
     mutationFn: createUser,
     onSuccess: (data) => {
-      setAddUserSuccess(`User created! Temp password: ${data.tempPassword}`);
+      setAddUserSuccess(`User created! They should check their email for the temporary password.`);
       setAddUserError("");
       setNewUserForm({ firstName: "", lastName: "", email: "", password: "", role: "POWER_USER" });
       refetchUsers();
@@ -241,8 +241,9 @@ export default function SettingsPage() {
 
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      setPasswordMsg("New password must be at least 6 characters");
+    const pw = newPassword;
+    if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[a-z]/.test(pw) || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
+      setPasswordMsg("Password: 8+ chars, upper, lower, number, special char");
       return;
     }
     passwordMutation.mutate({ currentPassword, newPassword });
@@ -418,8 +419,9 @@ export default function SettingsPage() {
                       setAddUserError("All fields required");
                       return;
                     }
-                    if (newUserForm.password.length < 6) {
-                      setAddUserError("Min 6 characters");
+                    const pw = newUserForm.password;
+                    if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[a-z]/.test(pw) || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
+                      setAddUserError("Password: 8+ chars, upper, lower, number, special char");
                       return;
                     }
                     createUserMutation.mutate(newUserForm);

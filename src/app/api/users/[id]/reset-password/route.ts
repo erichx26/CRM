@@ -4,6 +4,21 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 
+function generateSecureTempPassword(): string {
+  const specials = "!@#$%^&*";
+  function getChar(src: string): string {
+    const arr = new Uint8Array(1);
+    crypto.getRandomValues(arr);
+    return src[arr[0] % src.length];
+  }
+  const uuid = randomUUID().replace(/-/g, "");
+  const upper = getChar("ABCDEFGHJKLMNPQRSTUVWXYZ");
+  const lower = getChar("abcdefghjkmnpqrstuvwxyz");
+  const num = getChar("0123456789");
+  const spec = getChar(specials);
+  return `${spec}${upper}${lower}${num}${uuid.slice(0, 6)}`;
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
@@ -18,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const tempPassword = randomUUID().split("-")[0];
+    const tempPassword = generateSecureTempPassword();
     const hashedPassword = await bcrypt.hash(tempPassword, 12);
     await prisma.user.update({
       where: { id },

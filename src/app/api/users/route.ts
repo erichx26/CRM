@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
     }
 
-    return NextResponse.json({ ...user, tempPassword: password }, { status: 201 });
+    return NextResponse.json({ id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt }, { status: 201 });
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -4,6 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { canEdit } from "@/lib/permissions";
 
+async function verifyPropertyAccess(propertyId: string, userId: string) {
+  const property = await prisma.property.findUnique({
+    where: { id: propertyId },
+    select: { id: true, createdById: true },
+  });
+  if (!property) return null;
+  if (property.createdById !== userId) return { forbidden: true };
+  return property;
+}
+
 const emailSchema = z.object({
   value: z.string().email(),
   type: z.string().optional(),
@@ -65,6 +75,12 @@ export async function POST(
     }
 
     const { id } = await params;
+
+    const userId = session.user.id!;
+    const access = await verifyPropertyAccess(id, userId);
+    if (!access) return NextResponse.json({ error: "Property not found" }, { status: 404 });
+    if ("forbidden" in access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
     const body = await req.json();
     const parsed = contactSchema.safeParse(body);
     if (!parsed.success) {
@@ -193,6 +209,12 @@ export async function PATCH(
     }
 
     const { id } = await params;
+
+    const userId = session.user.id!;
+    const access = await verifyPropertyAccess(id, userId);
+    if (!access) return NextResponse.json({ error: "Property not found" }, { status: 404 });
+    if ("forbidden" in access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
     const body = await req.json();
     const parsed = contactSchema.safeParse(body);
     if (!parsed.success) {
@@ -274,6 +296,12 @@ export async function DELETE(
     }
 
     const { id } = await params;
+
+    const userId = session.user.id!;
+    const access = await verifyPropertyAccess(id, userId);
+    if (!access) return NextResponse.json({ error: "Property not found" }, { status: 404 });
+    if ("forbidden" in access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
     const { searchParams } = new URL(req.url);
     const contactId = searchParams.get("contactId");
 

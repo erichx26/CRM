@@ -6,6 +6,16 @@ import path from "path";
 import { canEdit } from "@/lib/permissions";
 import { randomUUID } from "crypto";
 
+async function verifyPropertyAccess(propertyId: string, userId: string) {
+  const property = await prisma.property.findUnique({
+    where: { id: propertyId },
+    select: { id: true, createdById: true },
+  });
+  if (!property) return null;
+  if (property.createdById !== userId) return { forbidden: true };
+  return property;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -46,6 +56,11 @@ export async function POST(
 
     const { id } = await params;
 
+    const userId = session.user.id!;
+    const access = await verifyPropertyAccess(id, userId);
+    if (!access) return NextResponse.json({ error: "Property not found" }, { status: 404 });
+    if ("forbidden" in access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
     const formData = await req.formData();
     const files = formData.getAll("files") as File[];
 
@@ -58,11 +73,13 @@ export async function POST(
     await mkdir(uploadDir, { recursive: true });
 
     const photos = [];
+    const allowedExts = ["jpg", "jpeg", "png", "gif", "webp"];
     for (const file of files) {
       if (!allowedTypes.includes(file.type)) {
         continue;
       }
-      const ext = file.name.split(".").pop() || "jpg";
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      if (!allowedExts.includes(ext)) continue;
       const filename = `${randomUUID()}.${ext}`;
       const filepath = path.join(uploadDir, filename);
       const bytes = await file.arrayBuffer();
@@ -111,6 +128,12 @@ export async function DELETE(
     }
 
     const { id } = await params;
+
+    const userId = session.user.id!;
+    const access = await verifyPropertyAccess(id, userId);
+    if (!access) return NextResponse.json({ error: "Property not found" }, { status: 404 });
+    if ("forbidden" in access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
     const { searchParams } = new URL(req.url);
     const photoId = searchParams.get("photoId");
     const deleteAll = searchParams.get("deleteAll") === "true";

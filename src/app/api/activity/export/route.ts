@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+const sanitizeCsvCell = (value: string): string => {
+  const trimmed = String(value).trim();
+  if (/^[=+\-@]/.test(trimmed)) return `'${trimmed}`;
+  return trimmed;
+};
+
 export async function GET() {
   try {
     const session = await auth();
@@ -27,10 +33,10 @@ export async function GET() {
     const rows = activities.map((a) => [
       new Date(a.createdAt).toLocaleDateString(),
       new Date(a.createdAt).toLocaleTimeString(),
-      a.user?.name || "Unknown",
-      a.action,
-      a.property?.addressRaw || "Unknown",
-      a.details || "",
+      sanitizeCsvCell(a.user?.name || "Unknown"),
+      sanitizeCsvCell(a.action),
+      sanitizeCsvCell(a.property?.addressRaw || "Unknown"),
+      sanitizeCsvCell(a.details || ""),
     ]);
 
     const csvContent = [
