@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-05-09T16:27:04.669Z",
+  "projectRoot": "C:\\Users\\erich\\OneDrive\\AI\\crm-app",
+  "structure": {
+    "hasPackageJson": true,
+    "hasTsConfig": true,
+    "hasClaudeConfig": true,
+    "hasClaudeFlow": true
+  },
+  "scannedAt": 1778344024669
+}

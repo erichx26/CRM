@@ -124,7 +124,9 @@ export async function PATCH(
         ...(status && { status }),
         ...(priority && { priority }),
         ...(followUpDate !== undefined && {
-          followUpDate: followUpDate ? new Date(followUpDate) : null,
+          followUpDate: followUpDate
+            ? (() => { const [y, m, d] = followUpDate.split('-').map(Number); return new Date(y, m - 1, d); })()
+            : null,
         }),
         ...(propertyType !== undefined && { propertyType }),
         ...(beds !== undefined && { beds: beds ? parseInt(beds) : null }),

@@ -1,0 +1,170 @@
+{
+  "timestamp": "2026-05-09T16:35:06.994Z",
+  "mode": "headless",
+  "workerType": "testgaps",
+  "model": "sonnet",
+  "durationMs": 182243,
+  "executionId": "testgaps_1778344324751_uwxdw4",
+  "success": true,
+  "findings": {
+    "sections": [
+      {
+        "title": "Test Coverage Analysis: New Chapter Real Estate CRM",
+        "content": "\n",
+        "level": 1
+      },
+      {
+        "title": "Current State Summary",
+        "content": "\n**No test framework is installed.** The `package.json` has no test runner (Jest, Vitest, etc.) and no project-specific tests exist. Only `node_modules/` test files were found.\n\n---\n\n",
+        "level": 2
+      },
+      {
+        "title": "Critical Finding: No Test Infrastructure",
+        "content": "\nThe project needs a testing framework before any meaningful coverage can be achieved.\n\n",
+        "level": 2
+      },
+      {
+        "title": "Recommended Setup",
+        "content": "\n```bash\nnpm install -D vitest @vitest/coverage-v8 @testing-library/react @testing-library/jest-dom msw\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "Gap #1: Utility Functions — No Edge Case Coverage",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "File: `src/lib/utils.ts`",
+        "content": "\n| Function | Tested? | Edge Cases Missing |\n|----------|---------|-------------------|\n| `normalizeAddress()` | ❌ | Empty string, multiple spaces, mixed case input, unknown abbreviations, numbers in address |\n| `generateRedfinUrl()` | ❌ | Special chars in address (`=`, `+`, `@` trigger CSV injection), empty params, unicode |\n| `generateMapsUrl()` | ❌ | Same as above |\n\n**Test skeletons:**\n\n```typescript\n// src/lib/utils.test.ts\nimport { describe, it, expect } from 'vitest';\nimport { normalizeAddress, generateRedfinUrl, generateMapsUrl } from './utils';\n\ndescribe('normalizeAddress', () => {\n  it('should convert common abbreviations to lowercase', () => {\n    expect(normalizeAddress('123 Main St')).toBe('123 main street');\n    expect(normalizeAddress('456 Oak Ave')).toBe('456 oak avenue');\n  });\n\n  it('should handle multiple spaces', () => {\n    expect(normalizeAddress('123  Main   St')).toBe('123 main street');\n  });\n\n  it('should handle empty string', () => {\n    expect(normalizeAddress('')).toBe('');\n  });\n\n  it('should preserve case for words not in abbreviation map', () => {\n    expect(normalizeAddress('123 MAIN STREET')).toBe('123 main street'); // abbreviations lowercased\n    expect(normalizeAddress('123 Main XYX')).toBe('123 main xyx'); // unknown stays as-is\n  });\n\n  it('should handle addresses with numbers', () => {\n    expect(normalizeAddress('456 Oak Ave Apt 2')).toBe('456 oak avenue apartment 2');\n  });\n\n  it('should handle suite abbreviations', () => {\n    expect(normalizeAddress('123 Main Ste 100')).toBe('123 main suite 100');\n  });\n});\n\ndescribe('generateRedfinUrl', () => {\n  it('should encode special characters', () => {\n    const url = generateRedfinUrl('123 Main St', 'City', 'CA', '12345');\n    expect(url).toContain('encodeURIComponent');\n    expect(url).not.toContain('='); // = is CSV injection char\n  });\n\n  it('should handle missing optional params', () => {\n    const url = generateRedfinUrl('123 Main St');\n    expect(url).toContain('123+Main+St');\n  });\n});\n\ndescribe('generateMapsUrl', () => {\n  it('should encode addresses with special chars', () => {\n    const url = generateMapsUrl('123=Oak+St');\n    expect(url).toContain('encodeURIComponent');\n  });\n});\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "Gap #2: Permission Functions — No Role Coverage",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "File: `src/lib/permissions.ts`",
+        "content": "\n| Function | Tested? | Missing Cases |\n|----------|---------|--------------|\n| `canEdit()` | ❌ | `undefined` role, VIEWER role |\n| `canDelete()` | ❌ | Only ADMIN returns true |\n| `canManageUsers()` | ❌ | Non-ADMIN returns false |\n| `canExport()` | ❌ | Non-ADMIN returns false |\n| `canViewActivity()` | ❌ | Non-ADMIN returns false |\n| `canBatchImport()` | ❌ | ADMIN + POWER_USER only |\n\n**Test skeleton:**\n\n```typescript\n// src/lib/permissions.test.ts\nimport { describe, it, expect } from 'vitest';\nimport { canEdit, canDelete, canManageUsers, canExport, canViewActivity, canBatchImport } from './permissions';\n\ndescribe('permissions', () => {\n  describe('canEdit', () => {\n    it('should return true for ADMIN', () => expect(canEdit('ADMIN')).toBe(true));\n    it('should return true for POWER_USER', () => expect(canEdit('POWER_USER')).toBe(true));\n    it('should return false for VIEWER', () => expect(canEdit('VIEWER')).toBe(false));\n    it('should return false for undefined', () => expect(canEdit(undefined)).toBe(false));\n    it('should return false for unknown role', () => expect(canEdit('UNKNOWN')).toBe(false));\n  });\n\n  describe('canDelete', () => {\n    it('should return true only for ADMIN', () => {\n      expect(canDelete('ADMIN')).toBe(true);\n      expect(canDelete('POWER_USER')).toBe(false);\n      expect(canDelete('VIEWER')).toBe(false);\n    });\n  });\n\n  describe('canBatchImport', () => {\n    it('should allow ADMIN and POWER_USER', () => {\n      expect(canBatchImport('ADMIN')).toBe(true);\n      expect(canBatchImport('POWER_USER')).toBe(true);\n      expect(canBatchImport('VIEWER')).toBe(false);\n    });\n  });\n  // ... etc for remaining functions\n});\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "Gap #3: API Routes — No HTTP Layer Tests",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "Auth Endpoints",
+        "content": "\n| Endpoint | Tested? | Missing |\n|----------|---------|---------|\n| `POST /api/auth/register` | ❌ | Duplicate email, password strength validation, first user gets ADMIN |\n| `POST /api/auth/[...nextauth]` | ❌ | Rate limiting, invalid credentials, bcrypt failure |\n| `POST /api/users/me/password` | ❌ | Wrong current password, same new password |\n\n**Test skeleton for register:**\n\n```typescript\n// src/app/api/auth/register/route.test.ts\nimport { describe, it, expect, beforeEach, vi } from 'vitest';\nimport { POST } from './route';\nimport { NextRequest } from 'next/server';\n\n// Mock auth and prisma\nvi.mock('@/lib/auth', () => ({ auth: vi.fn().mockResolvedValue({ user: { id: '1', role: 'ADMIN' } }) }));\nvi.mock('@/lib/prisma', () => ({ prisma: { user: { findUnique: vi.fn(), count: vi.fn(), create: vi.fn() } } }));\n\ndescribe('POST /api/auth/register', () => {\n  it('should return 400 for weak password - no uppercase', async () => {\n    const req = new NextRequest('http://localhost/api/auth/register', {\n      method: 'POST',\n      body: JSON.stringify({ name: 'Test', email: 'test@test.com', password: 'abcdefg1!' }),\n    });\n    const res = await POST(req);\n    expect(res.status).toBe(400);\n  });\n\n  it('should return 400 for weak password - no special char', async () => {\n    const req = new NextRequest('http://localhost/api/auth/register', {\n      method: 'POST',\n      body: JSON.stringify({ name: 'Test', email: 'test@test.com', password: 'Abcdefg1' }),\n    });\n    const res = await POST(req);\n    expect(res.status).toBe(400);\n  });\n\n  it('should return 409 for duplicate email', async () => {\n    const { prisma } = await import('@/lib/prisma');\n    prisma.user.findUnique.mockResolvedValue({ id: 'existing' });\n    const req = new NextRequest('http://localhost/api/auth/register', {\n      method: 'POST',\n      body: JSON.stringify({ name: 'Test', email: 'existing@test.com', password: 'Abcdefg1!' }),\n    });\n    const res = await POST(req);\n    expect(res.status).toBe(409);\n  });\n\n  it('should assign ADMIN role to first user', async () => {\n    const { prisma } = await import('@/lib/prisma');\n    prisma.user.findUnique.mockResolvedValue(null);\n    prisma.user.count.mockResolvedValue(0); // first user\n    prisma.user.create.mockResolvedValue({ id: '1', role: 'ADMIN', name: 'Test', email: 'test@test.com' });\n    const req = new NextRequest('http://localhost/api/auth/register', {\n      method: 'POST',\n      body: JSON.stringify({ name: 'Test', email: 'test@test.com', password: 'Abcdefg1!' }),\n    });\n    const res = await POST(req);\n    const body = await res.json();\n    expect(body.role).toBe('ADMIN');\n  });\n});\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "Property Endpoints — Massive Gap",
+        "content": "\n| Endpoint | Tested? | Critical Missing |\n|----------|---------|------------------|\n| `GET /api/properties` | ❌ | Pagination, search, status filter, priority filter, followUp filter |\n| `POST /api/properties` | ❌ | Duplicate detection, normalization, activity logging |\n| `GET /api/properties/[id]` | ❌ | 404 case, full property with relations |\n| `PATCH /api/properties/[id]` | ❌ | Partial updates, duplicate address on update |\n| `DELETE /api/properties/[id]` | ❌ | Permission checks, self-deletion guard |\n| `POST /api/properties/batch` | ❌ | ADMIN-only, empty ids array |\n| `GET /api/properties/export` | ❌ | CSV generation, CSV injection prevention |\n\n**Key edge cases to test:**\n\n```typescript\n// Critical property tests needed\n\n// 1. Address normalization on create\nit('should normalize duplicate detection', async () => {\n  // \"123 Main St\" and \"123 main street\" should be detected as duplicate\n});\n\n// 2. CSV injection prevention in export\nit('should prefix CSV injection chars with single quote', async () => {\n  // Property with address \"=HYPERLINK(...)\" should be sanitized\n});\n\n// 3. Follow-up date filtering\nit('should filter properties with upcoming follow-ups', async () => {\n  // ?followUp=upcoming should return only properties with followUpDate >= today\n});\n\n// 4. Batch delete permission\nit('should reject batch delete for non-ADMIN', async () => {\n  const req = new NextRequest('http://localhost/api/properties/batch', {\n    method: 'DELETE',\n    headers: { cookie: 'session=viewer_cookie' }, // VIEWER role\n    body: JSON.stringify({ ids: ['prop1', 'prop2'] }),\n  });\n  const res = await DELETE(req);\n  expect(res.status).toBe(403);\n});\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "Sub-resource Endpoints — No Coverage",
+        "content": "\n| Endpoint | Tested? | Missing |\n|----------|---------|---------|\n| `GET/POST /api/properties/[id]/contacts` | ❌ | updateId flow, email validation |\n| `POST /api/properties/[id]/notes` | ❌ | updateId flow, 404 handling |\n| `POST/DELETE /api/properties/[id]/photos` | ❌ | File type validation, deleteAll flag |\n| `POST /api/properties/[id]/photos/set-thumbnail` | ❌ | Only one thumbnail, photo must belong to property |\n\n**Test skeleton for contacts update flow:**\n\n```typescript\n// src/app/api/properties/[id]/contacts/route.test.ts\n\ndescribe('POST /api/properties/[id]/contacts', () => {\n  describe('update flow (updateId provided)', () => {\n    it('should return 404 if contact not found', async () => {\n      // Mock prisma.contact.findFirst to return null\n      const res = await POST(req with updateId='nonexistent');\n      expect(res.status).toBe(404);\n    });\n\n    it('should delete existing emails/phones before updating', async () => {\n      // Verify prisma.email.deleteMany and prisma.phone.deleteMany are called\n    });\n\n    it('should recreate emails with new data', async () => {\n      // Send { updateId: 'id', emails: [{ value: 'new@test.com' }] }\n      // Verify email is recreated, not appended\n    });\n  });\n\n  describe('create flow (no updateId)', () => {\n    it('should log CONTACT_ADDED activity', async () => {\n      // Verify activity is created\n    });\n  });\n});\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "Gap #4: CSV Injection Prevention — Untested",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "File: `src/app/api/properties/export/route.ts`",
+        "content": "\nThe `sanitizeCsvCell` function prevents CSV injection but has no tests:\n\n```typescript\n// Critical test cases for sanitizeCsvCell\n\nit('should prefix cells starting with = with single quote', () => {\n  expect(sanitizeCsvCell('=HYPERLINK(\"evil.com\")')).toBe(\"'=HYPERLINK(\\\"evil.com\\\")\");\n});\n\nit('should prefix cells starting with + with single quote', () => {\n  expect(sanitizeCsvCell('+UNSAFE_FORMULA')).toBe(\"'+UNSAFE_FORMULA\");\n});\n\nit('should prefix cells starting with - with single quote', () => {\n  expect(sanitizeCsvCell('-DANGEROUS')).toBe(\"'-DANGEROUS\");\n});\n\nit('should prefix cells starting with @ with single quote', () => {\n  expect(sanitizeCsvCell('@impersonation')).toBe(\"'@impersonation\");\n});\n\nit('should NOT modify safe cells', () => {\n  expect(sanitizeCsvCell('Normal Address')).toBe('Normal Address');\n  expect(sanitizeCsvCell('123 Main St')).toBe('123 Main St');\n});\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "Gap #5: Error Handling — Not Tested",
+        "content": "\nEvery endpoint has try/catch blocks returning 500, but no tests verify:\n\n| Scenario | Endpoint | Expected Behavior |\n|----------|----------|-------------------|\n| Prisma connection failure | All | 500 with \"Internal server error\" |\n| Invalid JSON body | All POST/PATCH | 400 with \"Invalid input\" |\n| Missing session | All authenticated | 401 with \"Unauthorized\" |\n| Non-ADMIN accessing admin route | activity, backup, export | 403 with \"Forbidden\" |\n| Property not found | [id] routes | 404 with \"Property not found\" |\n\n**Example test:**\n\n```typescript\nit('should return 500 on database error', async () => {\n  vi.mock('@/lib/prisma', () => ({\n    prisma: { property: { findMany: vi.fn().mockRejectedValue(new Error('DB connection failed')) }\n  }}));\n  const res = await GET(new NextRequest('http://localhost/api/properties'));\n  expect(res.status).toBe(500);\n  const body = await res.json();\n  expect(body.error).toBe('Internal server error');\n});\n```\n\n---\n\n",
+        "level": 2
+      },
+      {
+        "title": "Gap #6: Auth Rate Limiter — Logic Never Tested",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "File: `src/lib/auth.ts`",
+        "content": "\nThe in-memory rate limiter has no tests:\n\n```typescript\n// src/lib/auth.test.ts\n\ndescribe('Rate Limiter', () => {\n  it('should block after 10 failed attempts', () => {\n    // Simulate 10 failed authorize() calls\n    // 11th call should return null immediately\n  });\n\n  it('should reset after 15 minutes', () => {\n    // Advance clock by 15 minutes + 1ms\n    // Next attempt should succeed\n  });\n\n  it('should track by email, not IP', () => {\n    // Different IPs but same email should share counter\n  });\n});\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "Gap #7: Integration Test Flows — Completely Missing",
+        "content": "\nNo end-to-end scenarios tested:\n\n| Flow | Description |\n|------|-------------|\n| **Full property lifecycle** | Create → GET → PATCH status → add contact → add note → add photo → delete |\n| **CSV import pipeline** | Import 100 properties → verify count → check normalization |\n| **User management** | Create user → reset password → verify temp password works → login |\n| **Permission boundaries** | VIEWER tries to create property (403), POWER_USER creates (201), ADMIN deletes (201) |\n| **Backup integrity** | Export backup → verify all 8 models present |\n\n---\n\n",
+        "level": 2
+      },
+      {
+        "title": "Gap #8: Missing Zod Schema Validation Tests",
+        "content": "\nThe password schema regex is complex but untested:\n\n```typescript\n// src/lib/validation.test.ts\n\ndescribe('Password Validation Regex', () => {\n  const validPasswords = [\n    'Abcdefg1!',     // 8 chars, all requirements met\n    'Pass@word1',    // typical valid\n    'Str0ng!P@ss',   // 9 chars\n  ];\n\n  const invalidPasswords = [\n    ['short1!A', 'too short'],\n    ['abcdefgh1!', 'no uppercase'],\n    ['ABCDEFGH1!', 'no lowercase'],\n    ['Abcdefghi!', 'no number'],\n    ['Abcdefgh12', 'no special char'],\n    ['Pass word1!', 'space not special char'], // note: space doesn't match [^A-Za-z0-9]\n  ];\n\n  it.each(validPasswords)('should accept valid: %s', (pwd) => {\n    expect(registerSchema.shape.password.safeParse(pwd).success).toBe(true);\n  });\n\n  it.each(invalidPasswords)('should reject \"%s\" - %s', (pwd, reason) => {\n    expect(registerSchema.shape.password.safeParse(pwd).success).toBe(false);\n  });\n});\n```\n\n---\n\n",
+        "level": 2
+      },
+      {
+        "title": "Summary: Test Coverage Matrix",
+        "content": "\n| Category | Coverage | Priority |\n|----------|----------|----------|\n| Utility functions (`utils.ts`) | **0%** | High |\n| Permissions (`permissions.ts`) | **0%** | High |\n| Auth/Register endpoint | **0%** | High |\n| Property CRUD endpoints | **0%** | High |\n| Sub-resource endpoints | **0%** | Medium |\n| CSV export/injection prevention | **0%** | High |\n| Error handling (500s) | **0%** | Medium |\n| Rate limiter logic | **0%** | Medium |\n| Integration flows | **0%** | High |\n\n---\n\n",
+        "level": 2
+      },
+      {
+        "title": "Recommended Test Setup",
+        "content": "```bash\nnpm install -D vitest @vitest/coverage-v8 @testing-library/react @testing-library/jest-dom msw\n```\n\n```typescript\n// vitest.config.ts\nimport { defineConfig } from 'vitest/config';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  test: {\n    environment: 'node',\n    globals: true,\n    setupFiles: ['./src/test/setup.ts'],\n  },\n});\n```\n\nWould you like me to implement the full test setup and write the test skeletons for the highest-priority gaps?",
+        "level": 2
+      }
+    ],
+    "codeBlocks": [
+      {
+        "language": "bash",
+        "code": "npm install -D vitest @vitest/coverage-v8 @testing-library/react @testing-library/jest-dom msw"
+      },
+      {
+        "language": "typescript",
+        "code": "// src/lib/utils.test.ts\nimport { describe, it, expect } from 'vitest';\nimport { normalizeAddress, generateRedfinUrl, generateMapsUrl } from './utils';\n\ndescribe('normalizeAddress', () => {\n  it('should convert common abbreviations to lowercase', () => {\n    expect(normalizeAddress('123 Main St')).toBe('123 main street');\n    expect(normalizeAddress('456 Oak Ave')).toBe('456 oak avenue');\n  });\n\n  it('should handle multiple spaces', () => {\n    expect(normalizeAddress('123  Main   St')).toBe('123 main street');\n  });\n\n  it('should handle empty string', () => {\n    expect(normalizeAddress('')).toBe('');\n  });\n\n  it('should preserve case for words not in abbreviation map', () => {\n    expect(normalizeAddress('123 MAIN STREET')).toBe('123 main street'); // abbreviations lowercased\n    expect(normalizeAddress('123 Main XYX')).toBe('123 main xyx'); // unknown stays as-is\n  });\n\n  it('should handle addresses with numbers', () => {\n    expect(normalizeAddress('456 Oak Ave Apt 2')).toBe('456 oak avenue apartment 2');\n  });\n\n  it('should handle suite abbreviations', () => {\n    expect(normalizeAddress('123 Main Ste 100')).toBe('123 main suite 100');\n  });\n});\n\ndescribe('generateRedfinUrl', () => {\n  it('should encode special characters', () => {\n    const url = generateRedfinUrl('123 Main St', 'City', 'CA', '12345');\n    expect(url).toContain('encodeURIComponent');\n    expect(url).not.toContain('='); // = is CSV injection char\n  });\n\n  it('should handle missing optional params', () => {\n    const url = generateRedfinUrl('123 Main St');\n    expect(url).toContain('123+Main+St');\n  });\n});\n\ndescribe('generateMapsUrl', () => {\n  it('should encode addresses with special chars', () => {\n    const url = generateMapsUrl('123=Oak+St');\n    expect(url).toContain('encodeURIComponent');\n  });\n});"
+      },
+      {
+        "language": "typescript",
+        "code": "// src/lib/permissions.test.ts\nimport { describe, it, expect } from 'vitest';\nimport { canEdit, canDelete, canManageUsers, canExport, canViewActivity, canBatchImport } from './permissions';\n\ndescribe('permissions', () => {\n  describe('canEdit', () => {\n    it('should return true for ADMIN', () => expect(canEdit('ADMIN')).toBe(true));\n    it('should return true for POWER_USER', () => expect(canEdit('POWER_USER')).toBe(true));\n    it('should return false for VIEWER', () => expect(canEdit('VIEWER')).toBe(false));\n    it('should return false for undefined', () => expect(canEdit(undefined)).toBe(false));\n    it('should return false for unknown role', () => expect(canEdit('UNKNOWN')).toBe(false));\n  });\n\n  describe('canDelete', () => {\n    it('should return true only for ADMIN', () => {\n      expect(canDelete('ADMIN')).toBe(true);\n      expect(canDelete('POWER_USER')).toBe(false);\n      expect(canDelete('VIEWER')).toBe(false);\n    });\n  });\n\n  describe('canBatchImport', () => {\n    it('should allow ADMIN and POWER_USER', () => {\n      expect(canBatchImport('ADMIN')).toBe(true);\n      expect(canBatchImport('POWER_USER')).toBe(true);\n      expect(canBatchImport('VIEWER')).toBe(false);\n    });\n  });\n  // ... etc for remaining functions\n});"
+      },
+      {
+        "language": "typescript",
+        "code": "// src/app/api/auth/register/route.test.ts\nimport { describe, it, expect, beforeEach, vi } from 'vitest';\nimport { POST } from './route';\nimport { NextRequest } from 'next/server';\n\n// Mock auth and prisma\nvi.mock('@/lib/auth', () => ({ auth: vi.fn().mockResolvedValue({ user: { id: '1', role: 'ADMIN' } }) }));\nvi.mock('@/lib/prisma', () => ({ prisma: { user: { findUnique: vi.fn(), count: vi.fn(), create: vi.fn() } } }));\n\ndescribe('POST /api/auth/register', () => {\n  it('should return 400 for weak password - no uppercase', async () => {\n    const req = new NextRequest('http://localhost/api/auth/register', {\n      method: 'POST',\n      body: JSON.stringify({ name: 'Test', email: 'test@test.com', password: 'abcdefg1!' }),\n    });\n    const res = await POST(req);\n    expect(res.status).toBe(400);\n  });\n\n  it('should return 400 for weak password - no special char', async () => {\n    const req = new NextRequest('http://localhost/api/auth/register', {\n      method: 'POST',\n      body: JSON.stringify({ name: 'Test', email: 'test@test.com', password: 'Abcdefg1' }),\n    });\n    const res = await POST(req);\n    expect(res.status).toBe(400);\n  });\n\n  it('should return 409 for duplicate email', async () => {\n    const { prisma } = await import('@/lib/prisma');\n    prisma.user.findUnique.mockResolvedValue({ id: 'existing' });\n    const req = new NextRequest('http://localhost/api/auth/register', {\n      method: 'POST',\n      body: JSON.stringify({ name: 'Test', email: 'existing@test.com', password: 'Abcdefg1!' }),\n    });\n    const res = await POST(req);\n    expect(res.status).toBe(409);\n  });\n\n  it('should assign ADMIN role to first user', async () => {\n    const { prisma } = await import('@/lib/prisma');\n    prisma.user.findUnique.mockResolvedValue(null);\n    prisma.user.count.mockResolvedValue(0); // first user\n    prisma.user.create.mockResolvedValue({ id: '1', role: 'ADMIN', name: 'Test', email: 'test@test.com' });\n    const req = new NextRequest('http://localhost/api/auth/register', {\n      method: 'POST',\n      body: JSON.stringify({ name: 'Test', email: 'test@test.com', password: 'Abcdefg1!' }),\n    });\n    const res = await POST(req);\n    const body = await res.json();\n    expect(body.role).toBe('ADMIN');\n  });\n});"
+      },
+      {
+        "language": "typescript",
+        "code": "// Critical property tests needed\n\n// 1. Address normalization on create\nit('should normalize duplicate detection', async () => {\n  // \"123 Main St\" and \"123 main street\" should be detected as duplicate\n});\n\n// 2. CSV injection prevention in export\nit('should prefix CSV injection chars with single quote', async () => {\n  // Property with address \"=HYPERLINK(...)\" should be sanitized\n});\n\n// 3. Follow-up date filtering\nit('should filter properties with upcoming follow-ups', async () => {\n  // ?followUp=upcoming should return only properties with followUpDate >= today\n});\n\n// 4. Batch delete permission\nit('should reject batch delete for non-ADMIN', async () => {\n  const req = new NextRequest('http://localhost/api/properties/batch', {\n    method: 'DELETE',\n    headers: { cookie: 'session=viewer_cookie' }, // VIEWER role\n    body: JSON.stringify({ ids: ['prop1', 'prop2'] }),\n  });\n  const res = await DELETE(req);\n  expect(res.status).toBe(403);\n});"
+      },
+      {
+        "language": "typescript",
+        "code": "// src/app/api/properties/[id]/contacts/route.test.ts\n\ndescribe('POST /api/properties/[id]/contacts', () => {\n  describe('update flow (updateId provided)', () => {\n    it('should return 404 if contact not found', async () => {\n      // Mock prisma.contact.findFirst to return null\n      const res = await POST(req with updateId='nonexistent');\n      expect(res.status).toBe(404);\n    });\n\n    it('should delete existing emails/phones before updating', async () => {\n      // Verify prisma.email.deleteMany and prisma.phone.deleteMany are called\n    });\n\n    it('should recreate emails with new data', async () => {\n      // Send { updateId: 'id', emails: [{ value: 'new@test.com' }] }\n      // Verify email is recreated, not appended\n    });\n  });\n\n  describe('create flow (no updateId)', () => {\n    it('should log CONTACT_ADDED activity', async () => {\n      // Verify activity is created\n    });\n  });\n});"
+      },
+      {
+        "language": "typescript",
+        "code": "// Critical test cases for sanitizeCsvCell\n\nit('should prefix cells starting with = with single quote', () => {\n  expect(sanitizeCsvCell('=HYPERLINK(\"evil.com\")')).toBe(\"'=HYPERLINK(\\\"evil.com\\\")\");\n});\n\nit('should prefix cells starting with + with single quote', () => {\n  expect(sanitizeCsvCell('+UNSAFE_FORMULA')).toBe(\"'+UNSAFE_FORMULA\");\n});\n\nit('should prefix cells starting with - with single quote', () => {\n  expect(sanitizeCsvCell('-DANGEROUS')).toBe(\"'-DANGEROUS\");\n});\n\nit('should prefix cells starting with @ with single quote', () => {\n  expect(sanitizeCsvCell('@impersonation')).toBe(\"'@impersonation\");\n});\n\nit('should NOT modify safe cells', () => {\n  expect(sanitizeCsvCell('Normal Address')).toBe('Normal Address');\n  expect(sanitizeCsvCell('123 Main St')).toBe('123 Main St');\n});"
+      },
+      {
+        "language": "typescript",
+        "code": "it('should return 500 on database error', async () => {\n  vi.mock('@/lib/prisma', () => ({\n    prisma: { property: { findMany: vi.fn().mockRejectedValue(new Error('DB connection failed')) }\n  }}));\n  const res = await GET(new NextRequest('http://localhost/api/properties'));\n  expect(res.status).toBe(500);\n  const body = await res.json();\n  expect(body.error).toBe('Internal server error');\n});"
+      },
+      {
+        "language": "typescript",
+        "code": "// src/lib/auth.test.ts\n\ndescribe('Rate Limiter', () => {\n  it('should block after 10 failed attempts', () => {\n    // Simulate 10 failed authorize() calls\n    // 11th call should return null immediately\n  });\n\n  it('should reset after 15 minutes', () => {\n    // Advance clock by 15 minutes + 1ms\n    // Next attempt should succeed\n  });\n\n  it('should track by email, not IP', () => {\n    // Different IPs but same email should share counter\n  });\n});"
+      },
+      {
+        "language": "typescript",
+        "code": "// src/lib/validation.test.ts\n\ndescribe('Password Validation Regex', () => {\n  const validPasswords = [\n    'Abcdefg1!',     // 8 chars, all requirements met\n    'Pass@word1',    // typical valid\n    'Str0ng!P@ss',   // 9 chars\n  ];\n\n  const invalidPasswords = [\n    ['short1!A', 'too short'],\n    ['abcdefgh1!', 'no uppercase'],\n    ['ABCDEFGH1!', 'no lowercase'],\n    ['Abcdefghi!', 'no number'],\n    ['Abcdefgh12', 'no special char'],\n    ['Pass word1!', 'space not special char'], // note: space doesn't match [^A-Za-z0-9]\n  ];\n\n  it.each(validPasswords)('should accept valid: %s', (pwd) => {\n    expect(registerSchema.shape.password.safeParse(pwd).success).toBe(true);\n  });\n\n  it.each(invalidPasswords)('should reject \"%s\" - %s', (pwd, reason) => {\n    expect(registerSchema.shape.password.safeParse(pwd).success).toBe(false);\n  });\n});"
+      },
+      {
+        "language": "bash",
+        "code": "npm install -D vitest @vitest/coverage-v8 @testing-library/react @testing-library/jest-dom msw"
+      },
+      {
+        "language": "typescript",
+        "code": "// vitest.config.ts\nimport { defineConfig } from 'vitest/config';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  test: {\n    environment: 'node',\n    globals: true,\n    setupFiles: ['./src/test/setup.ts'],\n  },\n});"
+      }
+    ]
+  },
+  "rawOutputPreview": "\n\n# Test Coverage Analysis: New Chapter Real Estate CRM\n\n## Current State Summary\n\n**No test framework is installed.** The `package.json` has no test runner (Jest, Vitest, etc.) and no project-specific tests exist. Only `node_modules/` test files were found.\n\n---\n\n## Critical Finding: No Test Infrastructure\n\nThe project needs a testing framework before any meaningful coverage can be achieved.\n\n### Recommended Setup\n\n```bash\nnpm install -D vitest @vitest/coverage-v8 @testing-library/react @testing-library/jest-dom msw\n```\n\n---\n\n## Gap #1: Utility Functions — No Edge Case Coverage\n\n### File: `src/lib/utils.ts`\n\n| Function | Tested? | Edge Cases Missing |\n|----------|---------|-------------------|\n| `normalizeAddress()` | ❌ | Empty string, multiple spaces, mixed case input, unknown abbreviations, numbers in address |\n| `generateRedfinUrl()` | ❌ | Special chars in address (`=`, `+`, `@` trigger CSV injection), empty params, unicode |\n| `generateMapsUrl()` | ❌ | Same as above |\n\n**Test skeletons:**\n\n```typescript\n// src/lib/utils.test.ts\nimport { describe, it, expect } from 'vitest';\nimport { normalizeAddress, generateRedfinUrl, generateMapsUrl } from './utils';\n\ndescribe('normalizeAddress', () => {\n  it('should convert common abbreviations to lowercase', () => {\n    expect(normalizeAddress('123 Main St')).toBe('123 main street');\n    expect(normalizeAddress('456 Oak Ave')).toBe('456 oak avenue');\n  });\n\n  it('should handle multiple spaces', () => {\n    expect(normalizeAddress('123  Main   St')).toBe('123 main street');\n  });\n\n  it('should handle empty string', () => {\n    expect(normalizeAddress('')).toBe('');\n  });\n\n  it('should preserve case for words not in abbreviation map', () => {\n    expect(normalizeAddress('123 MAIN STREET')).toBe('123 main street'); // abbreviations lowercased\n    expect(normalizeAddress('123 Main XYX')).toBe('123 main xyx'); // unknown stays as-is\n  });\n\n  it('should handle addresses with numbers', () => {\n    expect(normalizeAddress('456 Oak ",
+  "rawOutputLength": 15705
+}

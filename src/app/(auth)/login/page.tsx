@@ -3,7 +3,17 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Building2 } from "lucide-react";
+import { Eye, EyeOff, Building2, Check, X } from "lucide-react";
+import Link from "next/link";
+
+function PasswordRule({ label, met }: { label: string; met: boolean }) {
+  return (
+    <div className={`flex items-center gap-2 text-xs ${met ? "text-[#22c55e]" : "text-[#94a3b8]"}`}>
+      {met ? <Check className="w-3 h-3 text-[#22c55e]" /> : <X className="w-3 h-3 text-[#ef4444]" />}
+      {label}
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +24,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const isPasswordValid =
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[^A-Za-z0-9]/.test(password);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +51,11 @@ export default function LoginPage() {
           router.refresh();
         }
       } else {
+        if (!isPasswordValid) {
+          setError("Please meet all password requirements");
+          setLoading(false);
+          return;
+        }
         const res = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -131,7 +153,7 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">
-                Password
+                Password {!isLogin && <span className="text-[#ef4444]">*</span>}
               </label>
               <div className="relative">
                 <input
@@ -139,7 +161,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
                   className="w-full px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white placeholder-[#94a3b8] focus:outline-none focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] transition-all pr-10"
                   placeholder="••••••••"
                 />
@@ -151,6 +173,18 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {!isLogin && (
+                <div className="mt-2 p-3 bg-[#161d2e] border border-[#1e2738] rounded-lg">
+                  <p className="text-xs text-[#94a3b8] mb-2">Password must include:</p>
+                  <div className="space-y-1">
+                    <PasswordRule label="At least 8 characters" met={password.length >= 8} />
+                    <PasswordRule label="One uppercase letter" met={/[A-Z]/.test(password)} />
+                    <PasswordRule label="One lowercase letter" met={/[a-z]/.test(password)} />
+                    <PasswordRule label="One number" met={/[0-9]/.test(password)} />
+                    <PasswordRule label="One special character (!@#$...)" met={/[^A-Za-z0-9]/.test(password)} />
+                  </div>
+                </div>
+              )}
             </div>
 
             {error && (
@@ -166,6 +200,14 @@ export default function LoginPage() {
             >
               {loading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
             </button>
+
+            {!isLogin && (
+              <div className="pt-2 text-center">
+                <Link href="/forgot-password" className="text-sm text-[#94a3b8] hover:text-white">
+                  Forgot password?
+                </Link>
+              </div>
+            )}
           </form>
         </div>
       </div>

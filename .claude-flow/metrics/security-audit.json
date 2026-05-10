@@ -1,0 +1,76 @@
+{
+  "timestamp": "2026-05-09T16:34:47.630Z",
+  "mode": "headless",
+  "workerType": "audit",
+  "model": "haiku",
+  "durationMs": 48761,
+  "executionId": "audit_1778344438869_8gu9oz",
+  "success": true,
+  "findings": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "src/app/api/auth/register/route.ts",
+        "line": 38,
+        "description": "First user to register gets ADMIN role automatically. If the application starts without users or the first registration is exploited, an attacker gains full administrative access."
+      },
+      {
+        "severity": "medium",
+        "file": "src/app/api/properties/[id]/photos/route.ts",
+        "line": 73,
+        "description": "File upload only validates MIME type (image/jpeg, image/png, etc.) but does not validate file content. Attackers could upload malicious files with fake extensions. Also, uploaded files are served from a public directory which could allow execution if server misconfigured."
+      },
+      {
+        "severity": "medium",
+        "file": "src/app/api/properties/[id]/photos/route.ts",
+        "line": 113,
+        "description": "File deletion silently ignores errors with empty catch block (`catch {}`). Failed deletions don't return errors to the user, potentially leaving orphaned files or inconsistent state."
+      },
+      {
+        "severity": "medium",
+        "file": "src/app/api/auth/register/route.ts",
+        "line": 1,
+        "description": "No rate limiting on registration endpoint. Attackers could enumerate email addresses and create unauthorized accounts via brute force registration attempts."
+      },
+      {
+        "severity": "low",
+        "file": "src/app/api/properties/[id]/contacts/route.ts",
+        "line": 70,
+        "description": "Contact update performs delete then insert pattern. If the second operation fails, existing emails/phones are lost with no rollback, leading to potential data loss."
+      },
+      {
+        "severity": "low",
+        "file": "src/app/api/properties/export/route.ts",
+        "line": 55,
+        "description": "CSV injection protection only handles cells starting with =, +, -, @. Other formula injection vectors (like tab, carriage return via CSV quoting) are not addressed. Consider a more comprehensive sanitization."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/auth.ts",
+        "line": null,
+        "description": "Session configuration not visible in provided code. JWT strategy should ensure AUTH_SECRET is properly rotated and not hardcoded. Ensure JWT expiry is set to reasonable values."
+      },
+      {
+        "severity": "low",
+        "file": "prisma/migrate_contact_data.ts",
+        "line": 37,
+        "description": "Migration script uses $queryRaw with template literal but the values come from already-parsed JSON. While safe in this context, the pattern could be risky if refactored without understanding the security implications."
+      }
+    ],
+    "riskScore": 42,
+    "recommendations": [
+      "Disable automatic ADMIN promotion for the first user. Instead, require explicit admin setup or use a secure deployment token.",
+      "Implement file content validation (magic bytes/mime sniffing) in addition to MIME type checking for uploads.",
+      "Move uploaded files outside the public directory or serve them via a protected API endpoint that validates authorization before serving.",
+      "Add rate limiting to the registration endpoint using Next.js middleware or a library like rate-limiter-flexible.",
+      "Use database transactions for the contact update pattern (delete + insert) to prevent data loss on failure.",
+      "Enhance CSV sanitization to handle all formula injection vectors (tabs, newlines, multi-line cells).",
+      "Add comprehensive error handling in the photo deletion that surfaces failures instead of silently ignoring them.",
+      "Audit all environment variables to ensure no secrets are committed (DATABASE_URL, AUTH_SECRET should come exclusively from environment).",
+      "Consider adding account lockout/disable functionality for administrators to revoke compromised accounts.",
+      "Add request validation size limits to prevent denial-of-service via large payloads."
+    ]
+  },
+  "rawOutputPreview": "\n\n```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/app/api/auth/register/route.ts\",\n      \"line\": 38,\n      \"description\": \"First user to register gets ADMIN role automatically. If the application starts without users or the first registration is exploited, an attacker gains full administrative access.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/app/api/properties/[id]/photos/route.ts\",\n      \"line\": 73,\n      \"description\": \"File upload only validates MIME type (image/jpeg, image/png, etc.) but does not validate file content. Attackers could upload malicious files with fake extensions. Also, uploaded files are served from a public directory which could allow execution if server misconfigured.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/app/api/properties/[id]/photos/route.ts\",\n      \"line\": 113,\n      \"description\": \"File deletion silently ignores errors with empty catch block (`catch {}`). Failed deletions don't return errors to the user, potentially leaving orphaned files or inconsistent state.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/app/api/auth/register/route.ts\",\n      \"line\": 1,\n      \"description\": \"No rate limiting on registration endpoint. Attackers could enumerate email addresses and create unauthorized accounts via brute force registration attempts.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/app/api/properties/[id]/contacts/route.ts\",\n      \"line\": 70,\n      \"description\": \"Contact update performs delete then insert pattern. If the second operation fails, existing emails/phones are lost with no rollback, leading to potential data loss.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/app/api/properties/export/route.ts\",\n      \"line\": 55,\n      \"description\": \"CSV injection protection only handles cells starting with =, +, -, @. Other formula injection vectors (like tab, carriage return via CSV quoting) are not addressed. Consider a more compr",
+  "rawOutputLength": 3925
+}

@@ -1,0 +1,140 @@
+{
+  "running": true,
+  "startedAt": "2026-05-08T22:44:24.721Z",
+  "workers": {
+    "map": {
+      "runCount": 20,
+      "successCount": 20,
+      "failureCount": 0,
+      "averageDurationMs": 9.65,
+      "isRunning": false,
+      "nextRun": "2026-05-09T16:42:04.675Z",
+      "lastStartedAt": "2026-05-09T16:27:04.663Z",
+      "lastRun": "2026-05-09T16:27:04.670Z"
+    },
+    "audit": {
+      "runCount": 25,
+      "successCount": 23,
+      "failureCount": 2,
+      "averageDurationMs": 92332.73181818181,
+      "isRunning": false,
+      "nextRun": "2026-05-09T16:44:47.633Z",
+      "lastStartedAt": "2026-05-09T16:33:58.864Z",
+      "lastRun": "2026-05-09T16:34:47.632Z"
+    },
+    "optimize": {
+      "runCount": 19,
+      "successCount": 19,
+      "failureCount": 0,
+      "averageDurationMs": 74161.36842105263,
+      "isRunning": false,
+      "nextRun": "2026-05-09T16:43:06.577Z",
+      "lastStartedAt": "2026-05-09T16:27:04.675Z",
+      "lastRun": "2026-05-09T16:28:06.572Z"
+    },
+    "consolidate": {
+      "runCount": 10,
+      "successCount": 10,
+      "failureCount": 0,
+      "averageDurationMs": 5,
+      "isRunning": false,
+      "nextRun": "2026-05-09T16:42:04.661Z",
+      "lastStartedAt": "2026-05-09T16:12:04.676Z",
+      "lastRun": "2026-05-09T16:12:04.678Z"
+    },
+    "testgaps": {
+      "runCount": 14,
+      "successCount": 14,
+      "failureCount": 0,
+      "averageDurationMs": 103388,
+      "isRunning": false,
+      "nextRun": "2026-05-09T16:32:04.735Z",
+      "lastStartedAt": "2026-05-09T16:32:04.744Z",
+      "lastRun": "2026-05-09T16:35:06.997Z"
+    },
+    "predict": {
+      "runCount": 0,
+      "successCount": 0,
+      "failureCount": 0,
+      "averageDurationMs": 0,
+      "isRunning": false
+    },
+    "document": {
+      "runCount": 0,
+      "successCount": 0,
+      "failureCount": 0,
+      "averageDurationMs": 0,
+      "isRunning": false
+    }
+  },
+  "config": {
+    "autoStart": false,
+    "logDir": "C:\\Users\\erich\\OneDrive\\AI\\crm-app\\.claude-flow\\logs",
+    "stateFile": "C:\\Users\\erich\\OneDrive\\AI\\crm-app\\.claude-flow\\daemon-state.json",
+    "maxConcurrent": 2,
+    "workerTimeoutMs": 960000,
+    "resourceThresholds": {
+      "maxCpuLoad": 17.6,
+      "minFreeMemoryPercent": 10
+    },
+    "workers": [
+      {
+        "type": "map",
+        "intervalMs": 900000,
+        "offsetMs": 0,
+        "priority": "normal",
+        "description": "Codebase mapping",
+        "enabled": true
+      },
+      {
+        "type": "audit",
+        "intervalMs": 600000,
+        "offsetMs": 120000,
+        "priority": "critical",
+        "description": "Security analysis",
+        "enabled": true
+      },
+      {
+        "type": "optimize",
+        "intervalMs": 900000,
+        "offsetMs": 240000,
+        "priority": "high",
+        "description": "Performance optimization",
+        "enabled": true
+      },
+      {
+        "type": "consolidate",
+        "intervalMs": 1800000,
+        "offsetMs": 360000,
+        "priority": "low",
+        "description": "Memory consolidation",
+        "enabled": true
+      },
+      {
+        "type": "testgaps",
+        "intervalMs": 1200000,
+        "offsetMs": 480000,
+        "priority": "normal",
+        "description": "Test coverage analysis",
+        "enabled": true
+      },
+      {
+        "type": "predict",
+        "intervalMs": 600000,
+        "offsetMs": 0,
+        "priority": "low",
+        "description": "Predictive preloading",
+        "enabled": false
+      },
+      {
+        "type": "document",
+        "intervalMs": 3600000,
+        "offsetMs": 0,
+        "priority": "low",
+        "description": "Auto-documentation",
+        "enabled": false
+      }
+    ]
+  },
+  "savedAt": "2026-05-09T16:35:06.997Z"
+}

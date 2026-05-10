@@ -13,6 +13,15 @@ const createPropertySchema = z.object({
   status: z.enum(["NEW", "CONTACTED", "NEGOTIATING", "CLOSED", "DEAD"]).optional(),
   priority: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
   followUpDate: z.string().optional(),
+  propertyType: z.string().optional(),
+  beds: z.string().optional(),
+  baths: z.string().optional(),
+  squareFeet: z.string().optional(),
+  lotSize: z.string().optional(),
+  yearBuilt: z.string().optional(),
+  mlsNumber: z.string().optional(),
+  source: z.string().optional(),
+  price: z.string().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -87,7 +96,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { addressRaw, city, state, zip, status, priority, followUpDate } = parsed.data;
+    const { addressRaw, city, state, zip, status, priority, followUpDate, propertyType, beds, baths, squareFeet, lotSize, yearBuilt, mlsNumber, source, price } = parsed.data;
     const addressNormalized = normalizeAddress(addressRaw);
 
     const existing = await prisma.property.findFirst({
@@ -109,10 +118,21 @@ export async function POST(req: NextRequest) {
         zip,
         status: status || "NEW",
         priority: priority || "MEDIUM",
-        followUpDate: followUpDate ? new Date(followUpDate) : null,
+        followUpDate: followUpDate
+          ? (() => { const [y, m, d] = followUpDate.split('-').map(Number); return new Date(y, m - 1, d); })()
+          : null,
         redfinUrl: generateRedfinUrl(addressRaw, city, state, zip),
         mapsUrl: generateMapsUrl(addressRaw, city, state, zip),
         createdById: userId,
+        propertyType: propertyType || null,
+        beds: beds ? parseInt(beds) : null,
+        baths: baths ? parseInt(baths) : null,
+        squareFeet: squareFeet ? parseInt(squareFeet) : null,
+        lotSize: lotSize ? parseFloat(lotSize) : null,
+        yearBuilt: yearBuilt ? parseInt(yearBuilt) : null,
+        mlsNumber: mlsNumber || null,
+        source: source || null,
+        price: price ? parseFloat(price) : null,
       },
     });
 

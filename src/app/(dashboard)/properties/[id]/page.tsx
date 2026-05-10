@@ -102,6 +102,17 @@ export default function PropertyDetailPage() {
   const [selectMode, setSelectMode] = useState(false);
   const photosSectionRef = useRef<HTMLDivElement>(null);
 
+  // Local state for quick-edit follow-up date to avoid excessive API calls
+  const [localFollowUpDate, setLocalFollowUpDate] = useState("");
+  const [editingFollowUpDate, setEditingFollowUpDate] = useState(false);
+
+  // Helper to get date string in local time (YYYY-MM-DD)
+  const toLocalDateString = (date: Date | string | null | undefined) => {
+    if (!date) return "";
+    const d = new Date(date);
+    return d.toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+  };
+
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<typeof form>) => {
       const res = await fetch(`/api/properties/${id}`, {
@@ -568,6 +579,9 @@ export default function PropertyDetailPage() {
                     <label className="block text-sm font-medium text-[#94a3b8] mb-1.5">Year Built</label>
                     <input
                       type="number"
+                      min="1800"
+                      max="2035"
+                      placeholder="e.g. 1995"
                       value={form.yearBuilt}
                       onChange={(e) => setForm({ ...form, yearBuilt: e.target.value })}
                       className="w-full px-4 py-2.5 bg-[#161d2e] border border-[#1e2738] rounded-lg text-white"
@@ -698,13 +712,52 @@ export default function PropertyDetailPage() {
                 <div className="flex items-center gap-4 text-sm text-[#94a3b8]">
                   <span>Added: {new Date(property.createdAt).toLocaleDateString()}</span>
                   <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4 text-[#f59e0b]" />
-                    <input
-                      type="date"
-                      value={property.followUpDate ? new Date(property.followUpDate).toISOString().split("T")[0] : ""}
-                      onChange={(e) => updateMutation.mutate({ followUpDate: e.target.value || undefined })}
-                      className="bg-transparent text-[#f59e0b] cursor-pointer hover:text-[#fbbf24] focus:outline-none"
-                    />
+                    <button
+                      onClick={() => {
+                        setLocalFollowUpDate(property.followUpDate ? toLocalDateString(property.followUpDate) : "");
+                        setEditingFollowUpDate(true);
+                      }}
+                      className={`p-1.5 rounded-lg border transition-all duration-200 ${
+                        editingFollowUpDate
+                          ? "bg-[#f59e0b]/30 border-[#f59e0b] text-[#fbbf24] shadow-[0_0_12px_rgba(245,158,11,0.5)]"
+                          : "text-[#f59e0b] border-transparent hover:bg-[#f59e0b]/20 hover:border-[#f59e0b]/40"
+                      }`}
+                      title="Edit follow-up date"
+                    >
+                      <Calendar className="w-5 h-5" />
+                    </button>
+                    {!editingFollowUpDate ? (
+                      <span
+                        onClick={() => {
+                          setLocalFollowUpDate(property.followUpDate ? toLocalDateString(property.followUpDate) : "");
+                          setEditingFollowUpDate(true);
+                        }}
+                        className="text-[#f59e0b] cursor-pointer hover:text-[#fbbf24] hover:underline"
+                      >
+                        {property.followUpDate ? toLocalDateString(property.followUpDate).replace(/(\d{4})-(\d{2})-(\d{2})/, '$2/$3/$1') : "Set date"}
+                      </span>
+                    ) : (
+                      <input
+                        type="date"
+                        value={localFollowUpDate}
+                        onChange={(e) => setLocalFollowUpDate(e.target.value)}
+                        onBlur={() => {
+                          const newDate = localFollowUpDate || undefined;
+                          const oldDate = property.followUpDate ? toLocalDateString(property.followUpDate) : "";
+                          if (newDate !== oldDate) {
+                            updateMutation.mutate({ followUpDate: newDate });
+                          }
+                          setEditingFollowUpDate(false);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            setEditingFollowUpDate(false);
+                          }
+                        }}
+                        className="bg-[#161d2e] text-[#f59e0b] cursor-pointer hover:text-[#fbbf24] focus:outline-none focus:ring-2 focus:ring-[#f59e0b] border border-[#f59e0b]/50 rounded px-2 py-1"
+                        autoFocus
+                      />
+                    )}
                   </div>
                 </div>
 
