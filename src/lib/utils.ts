@@ -39,3 +39,8 @@ export function generateMapsUrl(address: string, city?: string, state?: string, 
   const query = [address, city, state, zip].filter(Boolean).join(" ");
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
+
+export function generatePellegoUrl(address: string, city?: string, state?: string, zip?: string): string {
+  const parts = [address, city, state, zip].filter(Boolean).join(" ").toLowerCase().replace(/\s+/g, "-");
+  return `https://app.pellego.com/proformas/address/${encodeURIComponent(parts)}`;
+}

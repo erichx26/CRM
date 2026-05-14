@@ -25,6 +25,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { generatePellegoUrl } from "@/lib/utils";
 
 async function fetchProperty(id: string) {
   const res = await fetch(`/api/properties/${id}`);
@@ -707,6 +708,15 @@ export default function PropertyDetailPage() {
                       Google Maps
                     </a>
                   )}
+                  <a
+                    href={generatePellegoUrl(property.addressRaw, property.city, property.state, property.zip)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-[#161d2e] rounded-lg text-sm text-[#94a3b8] hover:text-white"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Pellego
+                  </a>
                 </div>
 
                 <div className="flex items-center gap-4 text-sm text-[#94a3b8]">
